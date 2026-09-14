@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="lockBody" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fcd34d"/>
+      <stop offset="60%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#b45309"/>
+    </linearGradient>
+    <linearGradient id="shackleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fde68a"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+    <linearGradient id="postGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#f1f5f9"/>
+      <stop offset="100%" stop-color="#94a3b8"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" fill="#0f172a"/>
+
+  <!-- Field goal post -->
+  <rect x="246" y="355" width="20" height="90" rx="4" fill="url(#postGrad)"/>
+  <rect x="90" y="348" width="332" height="20" rx="4" fill="url(#postGrad)"/>
+  <rect x="90" y="40" width="20" height="328" rx="4" fill="url(#postGrad)"/>
+  <rect x="402" y="40" width="20" height="328" rx="4" fill="url(#postGrad)"/>
+  <circle cx="100" cy="44" r="12" fill="#cbd5e1"/>
+  <circle cx="412" cy="44" r="12" fill="#cbd5e1"/>
+
+  <!-- Grass base -->
+  <rect x="0" y="436" width="512" height="76" fill="#14532d"/>
+  <rect x="0" y="432" width="512" height="12" fill="#166534"/>
+
+  <!-- Grass blades -->
+  <g fill="#16a34a">
+    <path d="M18 434 L22 414 L26 434"/>
+    <path d="M40 434 L45 418 L50 434"/>
+    <path d="M62 434 L65 420 L70 434"/>
+    <path d="M84 434 L89 412 L94 434"/>
+    <path d="M108 434 L112 419 L117 434"/>
+    <path d="M130 434 L134 415 L139 434"/>
+    <path d="M152 434 L157 420 L162 434"/>
+    <path d="M176 434 L180 413 L185 434"/>
+    <path d="M198 434 L203 418 L208 434"/>
+    <path d="M222 434 L226 416 L231 434"/>
+    <path d="M246 434 L250 411 L254 434"/>
+    <path d="M268 434 L273 419 L278 434"/>
+    <path d="M292 434 L296 415 L301 434"/>
+    <path d="M316 434 L320 418 L325 434"/>
+    <path d="M338 434 L343 413 L348 434"/>
+    <path d="M362 434 L366 420 L371 434"/>
+    <path d="M386 434 L390 416 L395 434"/>
+    <path d="M410 434 L415 419 L420 434"/>
+    <path d="M434 434 L438 414 L443 434"/>
+    <path d="M458 434 L462 420 L467 434"/>
+    <path d="M484 434 L488 416 L493 434"/>
+  </g>
+  <g fill="#15803d">
+    <path d="M30 434 L35 422 L40 434"/>
+    <path d="M72 434 L76 417 L81 434"/>
+    <path d="M118 434 L122 421 L128 434"/>
+    <path d="M164 434 L168 416 L174 434"/>
+    <path d="M212 434 L216 422 L222 434"/>
+    <path d="M256 434 L260 418 L265 434"/>
+    <path d="M304 434 L308 421 L313 434"/>
+    <path d="M350 434 L354 417 L360 434"/>
+    <path d="M396 434 L400 422 L406 434"/>
+    <path d="M444 434 L448 418 L454 434"/>
+    <path d="M472 434 L476 421 L482 434"/>
+  </g>
+
+  <!-- Lock shackle -->
+  <path
+    d="M192 196 L192 148 Q192 88 256 88 Q320 88 320 148 L320 196"
+    fill="none"
+    stroke="url(#shackleGrad)"
+    stroke-width="38"
+    stroke-linecap="round"
+    filter="url(#glow)"
+  />
+  <!-- Lock body -->
+  <rect x="148" y="188" width="216" height="152" rx="26" fill="url(#lockBody)" filter="url(#glow)"/>
+  <!-- Body highlight -->
+  <rect x="148" y="188" width="216" height="50" rx="26" fill="#ffffff1a"/>
+  <rect x="148" y="218" width="216" height="20" fill="#ffffff0a"/>
+  <!-- Keyhole -->
+  <circle cx="256" cy="244" r="26" fill="#78350f"/>
+  <rect x="244" y="244" width="24" height="42" rx="10" fill="#78350f"/>
+  <!-- Shine -->
+  <ellipse cx="256" cy="94" rx="16" ry="6" fill="#fef9c3" opacity="0.5"/>
+</svg>

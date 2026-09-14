@@ -1,0 +1,21 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/api/picks", "destination": "/api/picks" },
+    { "source": "/api/overrides", "destination": "/api/overrides" },
+    { "source": "/api/overrides/:year/:week/:player", "destination": "/api/overrides" },
+    { "source": "/api/schedule/:week", "destination": "/api/schedule" },
+    { "source": "/api/scores", "destination": "/api/scores" },
+    { "source": "/api/week-overrides", "destination": "/api/week-overrides" },
+    { "source": "/api/season-picks", "destination": "/api/season-picks" },
+    { "source": "/api/subscribe", "destination": "/api/subscribe" },
+    { "source": "/api/notify", "destination": "/api/notify" },
+    { "source": "/api/notify-sunday", "destination": "/api/notify-sunday" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "crons": [
+    { "path": "/api/notify", "schedule": "0 19 * * 6" },
+    { "path": "/api/notify-sunday", "schedule": "0 16 * * 0" }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "2021-1-NATHAN": { "outcome": "LAC 116, POR 86 — LAC won outright, POR ML lost" },
+  "2021-3-CHRIS": { "outcome": "CLE 41, CIN 16 — 57 total pts, over 47, under lost" },
+  "2021-6-SEAN": { "outcome": "CIN 24, PIT 10 — CIN won by 14, PIT +4 lost" },
+  "2021-10-SEAN": { "outcome": "CHI 25, SEA 24 — 49 total pts, over 44, under lost" },
+  "2021-14-COLBY": { "outcome": "CAR 10, ATL 0 — Falcons lost, ATL ML lost" },
+  "2022-4-BRITTON": { "outcome": "SEA 48, DET 45 — SEA won outright, DET -5.5 lost" },
+  "2022-10-COLBY": { "outcome": "CAR 25, ATL 15 — Panthers won, ATL ML lost" },
+  "2022-15-NATHAN": { "outcome": "LV 30, NE 24 — Raiders won, NE ML lost" },
+  "2023-3-SEAN": { "outcome": "ARI 28, DAL 16 — Cowboys lost by 12, DAL -6.5 lost" },
+  "2023-6-NATHAN": { "outcome": "MIN 19, CHI 13 — only MIN had a passing TD, prop lost" },
+  "2023-10-BRITTON": { "outcome": "SEA 29, WSH 26 — SEA won by 3, didn't cover -6.5" },
+  "2023-16-CHRIS": { "outcome": "CHI 27, ARI 16 — Cardinals lost by 11, ARI +7.5 lost" },
+  "2024-1-SEAN": { "outcome": "NE 16, CIN 10 — Bengals lost outright, CIN -2.5 lost" },
+  "2024-3-BRITTON": { "outcome": "DEN 26, TB 7 — Bucs lost by 19, TB -2.5 lost" },
+  "2024-3-CHRIS": { "outcome": "LAR 26, SF 20 OT — 49ers ML lost" },
+  "2024-6-COLBY": { "outcome": "TB 51, NO 27 — Moreau had 2 rec, u1.5 lost" },
+  "2024-11-LUCAS": { "outcome": "GB 20, CHI 19" },
+  "2024-18-NATHAN": { "outcome": "SEA 30, LAR 25 — Fant had 5 rec, u3.5 lost" },
+  "2025-7-LUCAS": { "outcome": "DET 24, TB 9 — Williams had 0 rec, 3+ rec lost" },
+  "2025-15-BRITTON": { "outcome": "NO 20, CAR 17 — Panthers lost outright, CAR -2.5 lost" }
+}

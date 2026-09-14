@@ -1,0 +1,23 @@
+name: auto-settle
+
+on:
+  schedule:
+    # Every 3 min during game windows — Sunday 11am–midnight CST (17:00–06:00 UTC Mon)
+    - cron: '*/3 17-23 * * 0'
+    - cron: '*/3 0-6 * * 1'
+    # Thursday night 7pm–midnight CST (01:00–06:00 UTC Fri)
+    - cron: '*/3 1-6 * * 5'
+    # Monday night 7pm–midnight CST (01:00–06:00 UTC Tue)
+    - cron: '*/3 1-6 * * 2'
+  workflow_dispatch:
+
+jobs:
+  settle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Trigger auto-settle
+        run: |
+          curl -s -X POST https://lock-tracker.vercel.app/api/auto-settle \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.SETTLE_SECRET }}"

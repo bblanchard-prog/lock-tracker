@@ -1,0 +1,103 @@
+{
+  "fetchedAt": "2026-08-17T21:43:23.377Z",
+  "games": [
+    {
+      "label": "WSH vs NYG",
+      "day": "Thursday",
+      "timeET": "8:15 PM ET",
+      "timeCT": "7:15 PM CT",
+      "slot": "TNF"
+    },
+    {
+      "label": "NE vs DET",
+      "day": "Sunday",
+      "timeET": "9:30 AM ET",
+      "timeCT": "8:30 AM CT",
+      "slot": "Sunday Early"
+    },
+    {
+      "label": "KC vs ATL",
+      "day": "Sunday",
+      "timeET": "1:00 PM ET",
+      "timeCT": "12:00 PM CT",
+      "slot": "Sunday Early"
+    },
+    {
+      "label": "HOU vs CLE",
+      "day": "Sunday",
+      "timeET": "1:00 PM ET",
+      "timeCT": "12:00 PM CT",
+      "slot": "Sunday Early"
+    },
+    {
+      "label": "MIN vs GB",
+      "day": "Sunday",
+      "timeET": "1:00 PM ET",
+      "timeCT": "12:00 PM CT",
+      "slot": "Sunday Early"
+    },
+    {
+      "label": "JAX vs TEN",
+      "day": "Sunday",
+      "timeET": "1:00 PM ET",
+      "timeCT": "12:00 PM CT",
+      "slot": "Sunday Early"
+    },
+    {
+      "label": "MIA vs IND",
+      "day": "Sunday",
+      "timeET": "1:00 PM ET",
+      "timeCT": "12:00 PM CT",
+      "slot": "Sunday Early"
+    },
+    {
+      "label": "CAR vs NO",
+      "day": "Sunday",
+      "timeET": "1:00 PM ET",
+      "timeCT": "12:00 PM CT",
+      "slot": "Sunday Early"
+    },
+    {
+      "label": "BUF vs NYJ",
+      "day": "Sunday",
+      "timeET": "1:00 PM ET",
+      "timeCT": "12:00 PM CT",
+      "slot": "Sunday Early"
+    },
+    {
+      "label": "SEA vs LV",
+      "day": "Sunday",
+      "timeET": "4:05 PM ET",
+      "timeCT": "3:05 PM CT",
+      "slot": "Sunday Late"
+    },
+    {
+      "label": "LAR vs ARI",
+      "day": "Sunday",
+      "timeET": "4:05 PM ET",
+      "timeCT": "3:05 PM CT",
+      "slot": "Sunday Late"
+    },
+    {
+      "label": "SF vs DAL",
+      "day": "Sunday",
+      "timeET": "4:25 PM ET",
+      "timeCT": "3:25 PM CT",
+      "slot": "Sunday Late"
+    },
+    {
+      "label": "PIT vs CIN",
+      "day": "Sunday",
+      "timeET": "8:20 PM ET",
+      "timeCT": "7:20 PM CT",
+      "slot": "SNF"
+    },
+    {
+      "label": "LAC vs BAL",
+      "day": "Monday",
+      "timeET": "8:15 PM ET",
+      "timeCT": "7:15 PM CT",
+      "slot": "MNF"
+    }
+  ]
+}
