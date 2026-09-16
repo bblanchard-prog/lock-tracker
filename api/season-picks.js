@@ -29,6 +29,7 @@ export default async function handler(req, res) {
         lock: row.lock,
         odds: row.odds,
         result: row.result || null,
+        outcome: row.outcome || null,
         submittedAt: row.submitted_at,
       })
     }

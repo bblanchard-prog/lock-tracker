@@ -114,7 +114,7 @@ export default function PlayerProfileModal({ playerName, seasonsWithOverrides, o
     return pairs
   }, [pData])
 
-  const espnScores = useMultiYearScores(yearWeekPairs)
+  const { scores: espnScores, loading: scoresLoading } = useMultiYearScores(yearWeekPairs)
 
   const stats = useMemo(() => {
     let wins = 0, losses = 0, pushes = 0, mickeys = 0
@@ -286,10 +286,24 @@ export default function PlayerProfileModal({ playerName, seasonsWithOverrides, o
           </div>
 
           {/* Pick highlights */}
-          {hasHighlights && (
+          {(scoresLoading || hasHighlights) && (
             <div className="border-b border-slate-700 px-4 py-3 space-y-2">
               <div className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">Pick Highlights</div>
-              {[
+              {scoresLoading ? (
+                <div className="space-y-2">
+                  {[1,2,3].map(i => (
+                    <div key={i} className="border border-slate-700/40 rounded-lg px-3 py-2 animate-pulse">
+                      <div className="flex items-center gap-2">
+                        <div className="h-3 w-20 bg-slate-700 rounded" />
+                        <div className="h-3 w-12 bg-slate-800 rounded ml-1" />
+                        <div className="h-3 w-8 bg-slate-700 rounded ml-auto" />
+                      </div>
+                      <div className="h-3.5 w-40 bg-slate-700 rounded mt-1.5" />
+                      <div className="h-3 w-28 bg-slate-800 rounded mt-1" />
+                    </div>
+                  ))}
+                </div>
+              ) : [
                 noSweat       && { label: '🛋️ No Sweat',       sub: marginSubLabel(noSweat.coverage),       e: noSweat,       color: 'green',  badge: `+${formatMargin(noSweat.coverage.margin)}` },
                 closestCover  && { label: '😅 Closest W',       sub: marginSubLabel(closestCover.coverage),  e: closestCover,  color: 'green',  badge: `+${formatMargin(closestCover.coverage.margin)}` },
                 closestMiss    && { label: '😬 Closest Miss',     sub: marginSubLabel(closestMiss.coverage),    e: closestMiss,    color: 'red', badge: `-${formatMargin(Math.abs(closestMiss.coverage.margin))}` },
@@ -310,7 +324,7 @@ export default function PlayerProfileModal({ playerName, seasonsWithOverrides, o
                   </div>
                 )
               })}
-              {!noSweat && !closestCover && !closestMiss && !notEvenClose && (
+              {!scoresLoading && !noSweat && !closestCover && !closestMiss && !notEvenClose && (
                 <p className="text-slate-600 text-xs">Add final scores in the Season view to unlock margin-based highlights.</p>
               )}
             </div>

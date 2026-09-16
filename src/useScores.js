@@ -56,7 +56,7 @@ export function useScores(year, weekNums) {
   return scores
 }
 
-// Multi-year version: accepts [{year, week}] pairs, returns same "year-week" → games[] map
+// Multi-year version: accepts [{year, week}] pairs, returns { scores, loading }
 export function useMultiYearScores(pairs) {
   const [scores, setScores] = useState(() => {
     const result = {}
@@ -67,13 +67,19 @@ export function useMultiYearScores(pairs) {
     return result
   })
 
+  // loading is true when there are pairs we need to fetch that aren't cached yet
+  const [loading, setLoading] = useState(() => {
+    if (!pairs?.length) return false
+    return pairs.some(p => isStale(`${p.year}-${p.week}`))
+  })
+
   const depStr = useMemo(() =>
     (pairs || []).map(p => `${p.year}-${p.week}`).sort().join(','),
     [pairs]
   )
 
   useEffect(() => {
-    if (!pairs?.length) return
+    if (!pairs?.length) { setLoading(false); return }
 
     const unique = {}
     for (const p of pairs) {
@@ -90,8 +96,9 @@ export function useMultiYearScores(pairs) {
 
     // Fetch stale or missing entries in background
     const toFetch = Object.entries(unique).filter(([key]) => isStale(key))
-    if (!toFetch.length) return
+    if (!toFetch.length) { setLoading(false); return }
 
+    setLoading(true)
     Promise.all(toFetch.map(([key, p]) =>
       fetch(`${API}/scores?year=${p.year}&week=${p.week}`)
         .then(r => r.ok ? r.json() : [])
@@ -104,8 +111,9 @@ export function useMultiYearScores(pairs) {
         for (const { key, games } of results) next[key] = games
         return next
       })
+      setLoading(false)
     })
   }, [depStr])
 
-  return scores
+  return { scores, loading }
 }

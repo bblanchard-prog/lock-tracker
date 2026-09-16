@@ -73,7 +73,7 @@ export default async function handler(req, res) {
         }
       })
       .sort((a, b) => a._sort - b._sort)
-      .map(({ _sort, ...g }) => g)
+      .map(({ _sort, ...g }) => ({ ...g, ts: _sort }))
 
     try { writeFileSync(cf, JSON.stringify({ fetchedAt: new Date().toISOString(), games })) } catch {}
     return res.json({ week: weekNum, games })

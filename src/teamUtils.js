@@ -100,7 +100,7 @@ const PLAYER_TEAM = {
   'KAYSHON BOUTTE': 'New England Patriots', 'TREVEYON HENDERSON': 'New England Patriots',
   'FOSTER MOREAU': 'New Orleans Saints', 'CHRIS OLAVE': 'New Orleans Saints', 'OLAVE ': 'New Orleans Saints',
   'ALVIN KAMARA': 'New Orleans Saints', 'KAMARA ': 'New Orleans Saints',
-  'WAN\'DALE': 'New York Giants', 'JALIN HYATT': 'New York Giants', 'JOE FLACCO': 'New York Giants',
+  'WAN\'DALE': 'Tennessee Titans', 'WANDALE': 'Tennessee Titans', 'JALIN HYATT': 'New York Giants', 'MIKE WASHINGTON': 'Las Vegas Raiders', 'JOE FLACCO': 'New York Giants',
   'TYLER CONKLIN': 'New York Jets', 'DALVIN COOK': 'New York Jets',
   'AJ BROWN': 'Philadelphia Eagles', 'JAKE MOODY': 'San Francisco 49ers',
   'BROCK PURDY': 'San Francisco 49ers', 'CMC ': 'San Francisco 49ers', 'CHRISTIAN MCCAFFREY': 'San Francisco 49ers',
@@ -122,9 +122,10 @@ function normalizeTeam(raw) {
 
 export function getTeamFromPlayerProp(lock) {
   if (!lock) return null
-  const upper = lock.toUpperCase()
+  const normalize = s => s.toUpperCase().replace(/[^A-Z0-9 ]/g, '')
+  const upper = normalize(lock)
   for (const [fragment, team] of Object.entries(PLAYER_TEAM)) {
-    if (upper.includes(fragment.trim())) return team
+    if (upper.includes(normalize(fragment.trim()))) return team
   }
   return null
 }

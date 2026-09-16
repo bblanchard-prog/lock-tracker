@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { seasons } from './data.js'
 import SeasonView from './components/SeasonView.jsx'
 import AllTimeStats from './components/AllTimeStats.jsx'
@@ -6,6 +6,7 @@ import CraziestOdds from './components/CraziestOdds.jsx'
 import ThisWeek from './components/ThisWeek.jsx'
 import Leaderboard from './components/Leaderboard.jsx'
 import { API } from './api.js'
+import confetti from 'canvas-confetti'
 import './index.css'
 
 const TABS = ['This Week', 'Season', 'Leaderboard', 'Stats', 'Crazy Odds']
@@ -39,6 +40,8 @@ export default function App() {
   const [liveParlayWins, setLiveParlayWins] = useState([])
   const [isGolden, setIsGolden] = useState(false)
   const [live2026Weeks, setLive2026Weeks] = useState([])
+  const [showCelebration, setShowCelebration] = useState(false)
+  const celebrationFired = useRef(false)
   const [notifPrefs, setNotifPrefs] = useState(() => {
     try {
       const saved = localStorage.getItem('notif-prefs')
@@ -70,7 +73,16 @@ export default function App() {
           if (anyLoss && w.weekNum > mostRecentLossWeek) mostRecentLossWeek = w.weekNum
           if (allSettled && !anyLoss && w.weekNum > mostRecentWinWeek) mostRecentWinWeek = w.weekNum
         }
-        setIsGolden(mostRecentWinWeek > -1 && mostRecentWinWeek > mostRecentLossWeek)
+        const golden = mostRecentWinWeek > -1 && mostRecentWinWeek > mostRecentLossWeek
+        setIsGolden(golden)
+        // Fire celebration once per device per winning week
+        if (golden && mostRecentWinWeek > -1) {
+          const key = `goldenCelebrated_W${mostRecentWinWeek}`
+          if (!localStorage.getItem(key)) {
+            localStorage.setItem(key, '1')
+            setShowCelebration(true)
+          }
+        }
         setLive2026Weeks(weeks || [])
       }).catch(() => {})
     }
@@ -177,19 +189,19 @@ export default function App() {
 
   const dm = darkMode
   const bg = isGolden
-    ? 'bg-amber-950 text-slate-100'
+    ? 'bg-gradient-to-b from-yellow-900 via-amber-950 to-yellow-950 text-yellow-50'
     : dm ? 'bg-slate-900 text-slate-100' : 'bg-gray-100 text-slate-900'
   const headerBg = isGolden
-    ? 'bg-amber-900 border-yellow-500/60'
+    ? 'bg-gradient-to-r from-yellow-800 via-amber-700 to-yellow-800 border-yellow-400/80 shadow-lg shadow-yellow-900/50'
     : dm ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'
   const navBg = isGolden
-    ? 'bg-amber-900/80 border-yellow-500/40'
+    ? 'bg-yellow-900/90 border-yellow-500/60 shadow-md shadow-yellow-900/40'
     : dm ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'
   const activeTab = isGolden
-    ? 'bg-yellow-400 text-amber-900 font-black'
+    ? 'bg-yellow-400 text-yellow-900 font-black shadow shadow-yellow-500/40'
     : dm ? 'bg-yellow-500 text-slate-900' : 'bg-yellow-400 text-slate-900'
   const inactiveTab = isGolden
-    ? 'text-yellow-200/70 hover:text-yellow-100 hover:bg-amber-800/60'
+    ? 'text-yellow-300/80 hover:text-yellow-100 hover:bg-yellow-800/60'
     : dm ? 'text-slate-400 hover:text-slate-100 hover:bg-slate-700' : 'text-slate-500 hover:text-slate-900 hover:bg-gray-100'
   const drawerBg = dm ? 'bg-slate-800 text-slate-100' : 'bg-white text-slate-900'
   const sectionBg = dm ? 'bg-slate-700/50' : 'bg-gray-50'
@@ -197,19 +209,73 @@ export default function App() {
   const labelColor = dm ? 'text-slate-400' : 'text-slate-500'
   const borderColor = dm ? 'border-slate-700' : 'border-gray-200'
 
+  // Fire confetti when celebration shows
+  useEffect(() => {
+    if (!showCelebration || celebrationFired.current) return
+    celebrationFired.current = true
+    const duration = 4000
+    const end = Date.now() + duration
+    const colors = ['#fbbf24', '#f59e0b', '#fde68a', '#ffffff', '#fcd34d', '#d97706']
+    ;(function frame() {
+      confetti({ particleCount: 6, angle: 60, spread: 55, origin: { x: 0 }, colors })
+      confetti({ particleCount: 6, angle: 120, spread: 55, origin: { x: 1 }, colors })
+      if (Date.now() < end) requestAnimationFrame(frame)
+    })()
+    const timer = setTimeout(() => setShowCelebration(false), 5500)
+    return () => clearTimeout(timer)
+  }, [showCelebration])
+
   return (
-    <div className={`min-h-screen ${bg} transition-colors duration-200`}>
+    <div className={`min-h-screen ${bg} transition-colors duration-300 ${isGolden ? 'golden' : ''}`}>
+
+      {/* Golden shimmer overlay */}
+      {isGolden && (
+        <div className="fixed inset-0 pointer-events-none z-0 bg-[radial-gradient(ellipse_at_top,_rgba(234,179,8,0.12)_0%,_transparent_70%)]" />
+      )}
+
+      {/* 🏆 Parlay Hit Celebration */}
+      {showCelebration && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center cursor-pointer"
+          style={{ background: 'radial-gradient(ellipse at center, rgba(120,53,15,0.97) 0%, rgba(30,10,0,0.99) 100%)' }}
+          onClick={() => setShowCelebration(false)}
+        >
+          {/* Gold shimmer rings */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-96 h-96 rounded-full border-2 border-yellow-400/20 animate-ping" style={{ animationDuration: '2s' }} />
+            <div className="absolute w-64 h-64 rounded-full border-2 border-yellow-300/30 animate-ping" style={{ animationDuration: '1.5s', animationDelay: '0.3s' }} />
+          </div>
+
+          {/* Content */}
+          <div className="relative text-center px-8 select-none" style={{ animation: 'celebIn 0.6s cubic-bezier(0.34,1.56,0.64,1) both' }}>
+            <div className="text-8xl mb-4" style={{ filter: 'drop-shadow(0 0 30px rgba(234,179,8,0.8))' }}>🏆</div>
+            <div
+              className="text-5xl font-black tracking-widest uppercase mb-2"
+              style={{ color: '#fbbf24', textShadow: '0 0 40px rgba(234,179,8,0.9), 0 0 80px rgba(234,179,8,0.5)', letterSpacing: '0.15em' }}
+            >
+              WE HIT
+            </div>
+            <div
+              className="text-2xl font-black tracking-widest uppercase mb-6"
+              style={{ color: '#fde68a', textShadow: '0 0 20px rgba(234,179,8,0.6)', letterSpacing: '0.2em' }}
+            >
+              PARLAY CASHED 💰
+            </div>
+            <div className="text-yellow-400/60 text-sm tracking-widest uppercase">tap to continue</div>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
-      <header className={`${headerBg} border-b px-4 py-4`}>
+      <header className={`${headerBg} border-b px-4 py-4 relative z-10`}>
         {isGolden && (
-          <div className="max-w-5xl mx-auto mb-3 rounded-xl bg-yellow-400/20 border border-yellow-400/40 px-4 py-2 text-center">
-            <span className="text-yellow-300 font-black text-sm tracking-wide">🏆 WE HIT! PARLAY CASHED — STAY GOLDEN 🏆</span>
+          <div className="max-w-5xl mx-auto mb-3 rounded-xl bg-gradient-to-r from-yellow-500/30 via-yellow-300/20 to-yellow-500/30 border border-yellow-400/60 px-4 py-3 text-center shadow-inner shadow-yellow-500/20">
+            <span className="text-yellow-200 font-black text-base tracking-widest uppercase drop-shadow-sm">🏆 WE HIT · PARLAY CASHED · STAY GOLDEN 🏆</span>
           </div>
         )}
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="w-10" />
-          <h1 className="text-3xl font-bold text-center tracking-tight">
+          <h1 className={`text-3xl font-bold text-center tracking-tight ${isGolden ? 'text-yellow-300 drop-shadow-[0_0_12px_rgba(234,179,8,0.6)]' : ''}`}>
             {isGolden ? '🏆 Locks 🔒' : 'Locks 🔒'}
           </h1>
           <button
@@ -226,7 +292,7 @@ export default function App() {
       </header>
 
       {/* Nav */}
-      <nav className={`${navBg} border-b sticky top-0 z-10`}>
+      <nav className={`${navBg} border-b sticky top-0 z-10 relative`}>
         <div className="max-w-5xl mx-auto flex gap-1 px-2 py-2 overflow-x-auto scrollbar-none">
           {TABS.map(t => (
             <button key={t} onClick={() => setTab(t)}
@@ -237,12 +303,12 @@ export default function App() {
       </nav>
 
       {/* Main */}
-      <main className="max-w-5xl mx-auto px-4 py-6">
-        {tab === 'This Week' && <ThisWeek darkMode={darkMode} showOdds={showOdds} />}
-        {tab === 'Season' && <SeasonView allSeasons={allSeasons} darkMode={darkMode} liveParlayWins={filteredLiveParlayWins} />}
-        {tab === 'Leaderboard' && <Leaderboard allSeasons={allSeasons} />}
-        {tab === 'Stats' && <AllTimeStats seasons={allSeasons} liveParlayWins={filteredLiveParlayWins} />}
-        {tab === 'Crazy Odds' && <CraziestOdds seasons={allSeasons} />}
+      <main className="max-w-5xl mx-auto px-4 py-6 relative z-10">
+        {tab === 'This Week' && <ThisWeek darkMode={darkMode} showOdds={showOdds} isGolden={isGolden} />}
+        {tab === 'Season' && <SeasonView allSeasons={allSeasons} darkMode={darkMode} liveParlayWins={filteredLiveParlayWins} isGolden={isGolden} />}
+        {tab === 'Leaderboard' && <Leaderboard allSeasons={allSeasons} isGolden={isGolden} />}
+        {tab === 'Stats' && <AllTimeStats seasons={allSeasons} liveParlayWins={filteredLiveParlayWins} isGolden={isGolden} />}
+        {tab === 'Crazy Odds' && <CraziestOdds seasons={allSeasons} isGolden={isGolden} />}
       </main>
 
       {/* Backdrop */}

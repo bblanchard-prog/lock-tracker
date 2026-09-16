@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { getGamesForWeek, NFL_WEEKS, getCurrentNflWeek } from '../nflSchedule.js'
+import { getGamesForWeek, NFL_WEEKS, getCurrentNflWeek, CURRENT_SEASON } from '../nflSchedule.js'
 import { useAdminAuth } from '../useAdminAuth.jsx'
 import { API } from '../api.js'
 import confetti from 'canvas-confetti'
@@ -19,23 +19,32 @@ function normalizeLockText(raw) {
   if (!raw) return raw
   let s = raw.trim()
   s = s.replace(/\b(\d+\.?\d*)\+/g, 'o$1')
-  s = s.replace(/\bover\s+/i, 'o').replace(/\bunder\s+/i, 'u')
+  s = s.replace(/\bover\s+/gi, 'o').replace(/\bunder\s+/gi, 'u')
   s = s.replace(/\bO(\d)/g, 'o$1').replace(/\bU(\d)/g, 'u$1')
   const STAT_MAP = [
-    [/\b(receiving yards|rec yards|rec yds)\b/i, 'Rec Yds'],
-    [/\b(rush(?:ing)? yards?|rush(?:ing)? yds)\b/i, 'Rush Yds'],
-    [/\b(rush(?:ing)? att(?:empts?)?)\b/i, 'Car'],
-    [/\b(pass(?:ing)? yards?|pass yds)\b/i, 'Pass Yds'],
-    [/\b(pass(?:ing)? att(?:empts?)?|pass att)\b/i, 'Pass Att'],
-    [/\b(pass(?:ing)? tds?|td pass(?:es)?)\b/i, 'Pass TD'],
-    [/\b(carries|carry|rushes|rushing|rush)\b/i, 'Car'],
-    [/\b(catches|catch|receptions?)\b/i, 'Rec'],
-    [/\b(touchdowns?|tds?)\b/i, 'TD'],
-    [/\b(completions?|comp|cmp)\b/i, 'Comp'],
-    [/\b(extra points?|pats?|xps?)\b/i, 'PAT'],
-    [/\b(field goals?|fgs?|total fgs?)\b/i, 'FG'],
+    [/\b(receiving yards|rec yards|rec yds)\b/gi, 'Rec Yds'],
+    [/\b(rush(?:ing)? yards?|rush(?:ing)? yds)\b/gi, 'Rush Yds'],
+    [/\b(rush(?:ing)? att(?:empts?)?)\b/gi, 'Car'],
+    [/\b(pass(?:ing)? yards?|pass yds)\b/gi, 'Pass Yds'],
+    [/\b(pass(?:ing)? att(?:empts?)?|pass att)\b/gi, 'Pass Att'],
+    [/\b(pass(?:ing)? tds?|td pass(?:es)?)\b/gi, 'Pass TD'],
+    [/\b(carries|carry|rushes|rushing|rush)\b/gi, 'Car'],
+    [/\b(catches|catch|receptions?)\b/gi, 'Rec'],
+    [/\b(touchdowns?|tds?)\b/gi, 'TD'],
+    [/\b(completions?|comp|cmp)\b/gi, 'Comp'],
+    [/\b(extra points?|pats?|xps?)\b/gi, 'PAT'],
+    [/\b(field goals?|fgs?|total fgs?)\b/gi, 'FG'],
   ]
   for (const [re, canonical] of STAT_MAP) {
+    s = s.replace(re, canonical)
+  }
+  const NAME_MAP = [
+    [/wan[''’]?dale robinson/gi, "Wan'Dale Robinson"],
+    [/wan[''’]?dale/gi, "Wan'Dale"],
+    [/mike washington jr\.?/gi, 'Mike Washington Jr.'],
+    [/mike washington(?! jr)/gi, 'Mike Washington Jr.'],
+  ]
+  for (const [re, canonical] of NAME_MAP) {
     s = s.replace(re, canonical)
   }
   return s
@@ -84,18 +93,35 @@ function parseLineMeta(lock) {
   return { ou: /^o/i.test(m[1]) ? 'over' : 'under', line: parseFloat(m[2]) }
 }
 
+const TEAM_KEYWORD_TO_ABBR = {
+  'BEARS': 'CHI', 'BENGALS': 'CIN', 'BILLS': 'BUF', 'BRONCOS': 'DEN',
+  'BROWNS': 'CLE', 'BUCCANEERS': 'TB', 'BUCS': 'TB', 'CARDINALS': 'ARI',
+  'CHARGERS': 'LAC', 'CHIEFS': 'KC', 'COLTS': 'IND', 'COMMANDERS': 'WSH',
+  'COWBOYS': 'DAL', 'DOLPHINS': 'MIA', 'EAGLES': 'PHI', 'FALCONS': 'ATL',
+  'GIANTS': 'NYG', 'JAGUARS': 'JAX', 'JAGS': 'JAX', 'JETS': 'NYJ',
+  'LIONS': 'DET', 'PACKERS': 'GB', 'PANTHERS': 'CAR', 'PATRIOTS': 'NE',
+  'PATS': 'NE', 'RAIDERS': 'LV', 'RAMS': 'LAR', 'RAVENS': 'BAL',
+  'SAINTS': 'NO', 'SEAHAWKS': 'SEA', 'HAWKS': 'SEA', 'STEELERS': 'PIT',
+  'TEXANS': 'HOU', 'TITANS': 'TEN', 'VIKINGS': 'MIN',
+  'NINERS': 'SF', '49ERS': 'SF',
+}
+
+function resolveTeam(raw) {
+  return TEAM_KEYWORD_TO_ABBR[raw] || raw
+}
+
 function parseLiveMargin(lock, homeAbbr, awayAbbr, homeScore, awayScore) {
-  // Returns { margin, covered } for spread/ML so we can show coverage context
+  if (!lock || homeScore == null || awayScore == null) return null
   const s = lock.trim().replace(/^(take|lock[:\s]*)\s*/i, '').trim()
 
   // Spread
   const spreadM = s.match(/^(.+?)\s*([+\-]\d+(?:\.\d+)?)\s*$/)
   if (spreadM) {
     const spread = parseFloat(spreadM[2])
-    const teamRaw = spreadM[1].trim().toUpperCase()
+    const teamRaw = resolveTeam(spreadM[1].trim().toUpperCase())
     const ha = homeAbbr?.toUpperCase(), aa = awayAbbr?.toUpperCase()
-    const betHome = ha === teamRaw || homeAbbr?.toUpperCase().includes(teamRaw) || teamRaw.includes(ha)
-    const betAway = aa === teamRaw || awayAbbr?.toUpperCase().includes(teamRaw) || teamRaw.includes(aa)
+    const betHome = ha === teamRaw || teamRaw.includes(ha)
+    const betAway = aa === teamRaw || teamRaw.includes(aa)
     const betScore = betHome ? homeScore : betAway ? awayScore : null
     const otherScore = betHome ? awayScore : betAway ? homeScore : null
     if (betScore === null) return null
@@ -104,7 +130,7 @@ function parseLiveMargin(lock, homeAbbr, awayAbbr, homeScore, awayScore) {
   }
 
   // ML
-  const teamRaw = s.replace(/\s+ml\s*$/i, '').trim().toUpperCase()
+  const teamRaw = resolveTeam(s.replace(/\s+ml\s*$/i, '').trim().toUpperCase())
   const ha = homeAbbr?.toUpperCase(), aa = awayAbbr?.toUpperCase()
   const betHome = ha === teamRaw || teamRaw.includes(ha)
   const betAway = aa === teamRaw || teamRaw.includes(aa)
@@ -114,38 +140,110 @@ function parseLiveMargin(lock, homeAbbr, awayAbbr, homeScore, awayScore) {
   return { margin: betScore - otherScore, covered: betScore > otherScore }
 }
 
-function ProgressBar({ current, target, ou }) {
+function ProgressBar({ current, target, ou, result }) {
   if (target == null || target === 0) return null
   const pct = Math.min(100, Math.round((current / target) * 100))
-  const over = ou === 'over'
-  const hit = over ? current > target : current < target
-  const barColor = hit ? 'bg-green-400' : current === target ? 'bg-yellow-400' : over ? 'bg-yellow-400' : 'bg-slate-400'
+  let barColor
+  if (result === 'W') barColor = 'bg-green-400'
+  else if (result === 'L') barColor = 'bg-red-500'
+  else if (result === 'P') barColor = 'bg-yellow-400'
+  else {
+    const over = ou === 'over'
+    const crossed = current >= target
+    barColor = crossed
+      ? (over ? 'bg-green-400' : 'bg-red-500')
+      : (over ? 'bg-yellow-400' : 'bg-green-400')
+  }
+  const textColor = barColor === 'bg-green-400' ? 'text-green-400' : barColor === 'bg-red-500' ? 'text-red-400' : 'text-yellow-400'
   return (
-    <div className="flex items-center gap-1.5 mt-1">
-      <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden w-24">
-        <div className={`h-full rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${pct}%` }} />
+    <div className="flex items-center gap-1.5 mt-0.5">
+      <div className="h-2.5 bg-slate-700 rounded-sm overflow-hidden w-28">
+        <div className={`h-full rounded-sm transition-all duration-700 ${barColor}`} style={{ width: `${pct}%` }} />
       </div>
-      <span className={`text-xs font-mono ${hit ? 'text-green-400' : 'text-slate-400'}`}>
-        {current}{over ? '' : ''} / {over ? 'o' : 'u'}{target}
+      <span className={`text-xs font-mono ${textColor}`}>
+        {current} / {ou === 'over' ? 'o' : 'u'}{target}
       </span>
     </div>
   )
 }
 
-function LivePickStrip({ pick, weekNum }) {
+function LivePickStrip({ pick, weekNum, isLocked }) {
   const type = detectPickType(pick.lock)
   const isProp = type === 'prop'
   const isTotal = type === 'total' || type === 'team_total'
 
   // Game-score hook for spread/ML/total/team_total
-  const gameData = useLiveGame(isProp ? null : pick.game, weekNum)
+  const gameData = useLiveGame(isLocked && !isProp ? pick.game : null, weekNum)
 
-  // Prop stat hook (live polling every 60s when no result yet)
+  // Prop stat hook — only poll live when not yet settled
   const { data: propData } = usePlayerStat(
-    2026, weekNum, isProp ? pick.lock : null, isProp, 60000
+    CURRENT_SEASON, weekNum, isLocked && isProp ? pick.lock : null, isLocked && isProp, pick.result ? null : 60000, pick.game ?? null
   )
 
-  if (pick.result) return null
+  // Nothing renders until picks are locked (games haven't started yet)
+  if (!isLocked) return null
+
+  // ---- Settled state ----
+  if (pick.result) {
+    const fb = <span className="text-xs font-bold bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded tracking-wide">FINAL</span>
+
+    if (isProp && propData) {
+      const actual = propData.actual != null ? parseFloat(propData.actual) : null
+      const { line, ou, label } = propData
+      if (actual !== null) {
+        return (
+          <div className="mt-1.5">
+            <div className="flex items-center gap-1.5">
+              {fb}
+              <span className="text-xs text-slate-300 font-medium">{propData.playerName || ''} · {actual} {label || ''}</span>
+            </div>
+            <ProgressBar current={actual} target={line} ou={ou} result={pick.result} />
+          </div>
+        )
+      }
+    }
+
+    if (!isProp && gameData && gameData.homeScore != null && gameData.awayScore != null) {
+      const { homeScore, awayScore, homeAbbr, awayAbbr } = gameData
+      if (isTotal) {
+        const meta = parseLineMeta(pick.lock)
+        if (meta) {
+          const isTeamTotal = type === 'team_total'
+          const teamAbbr = isTeamTotal ? pick.lock.trim().split(/\s+/)[0].toUpperCase() : null
+          const betTeamScore = isTeamTotal ? (homeAbbr?.toUpperCase() === teamAbbr ? homeScore : awayScore) : null
+          const current = isTeamTotal ? betTeamScore : homeScore + awayScore
+          return (
+            <div className="mt-1.5">
+              <div className="flex items-center gap-1.5">
+                {fb}
+                <span className="text-xs text-slate-300 font-medium">
+                  {isTeamTotal ? `${teamAbbr} ${betTeamScore}` : `Total ${homeScore + awayScore}`}
+                  <span className="text-slate-500 ml-1">· {meta.ou === 'over' ? 'o' : 'u'}{meta.line}</span>
+                </span>
+              </div>
+              <ProgressBar current={current} target={meta.line} ou={meta.ou} result={pick.result} />
+            </div>
+          )
+        }
+      }
+      const marginData = parseLiveMargin(pick.lock, homeAbbr, awayAbbr, homeScore, awayScore)
+      const absMargin = marginData ? Math.abs(marginData.margin) : 0
+      const coverStr = marginData
+        ? marginData.covered
+          ? `COVERED BY ${absMargin.toFixed(absMargin % 1 === 0 ? 0 : 1)}`
+          : `MISSED BY ${absMargin.toFixed(absMargin % 1 === 0 ? 0 : 1)}`
+        : ''
+      return (
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          {fb}
+          <span className="text-xs text-slate-300 font-medium">{homeAbbr} {homeScore} · {awayAbbr} {awayScore}</span>
+          {coverStr && <span className={`text-xs font-bold ${marginData?.covered ? 'text-green-400' : 'text-red-400'}`}>{coverStr}</span>}
+        </div>
+      )
+    }
+
+    return <div className="mt-1.5">{fb}</div>
+  }
 
   // ---- Prop picks ----
   if (isProp && propData) {
@@ -256,7 +354,7 @@ function groupGamesBySlot(scheduleGames) {
   return slotOrder.map(s => ({ slot: s, games: groups[s] }))
 }
 
-export default function ThisWeek({ compactMode, showOdds }) {
+export default function ThisWeek({ showOdds, isGolden }) {
   const { request, Modal } = useAdminAuth()
   const [selectedWeek, setSelectedWeek] = useState(() => getCurrentNflWeek())
   const [picks, setPicks] = useState([])
@@ -268,9 +366,29 @@ export default function ThisWeek({ compactMode, showOdds }) {
   const [submitted, setSubmitted] = useState(false)
   const [customGame, setCustomGame] = useState('')
   const [scheduleGames, setScheduleGames] = useState(null)
+  const [nowTs, setNowTs] = useState(Date.now())
 
-  const weekKey = `2026-NFL-W${String(selectedWeek).padStart(2, '0')}`
+  const weekKey = `${CURRENT_SEASON}-NFL-W${String(selectedWeek).padStart(2, '0')}`
   const staticGames = getGamesForWeek(selectedWeek)
+
+  // Parlay lock: all picks lock when the first game of the week kicks off
+  const lockTime = scheduleGames?.length
+    ? Math.min(...scheduleGames.map(g => g.ts).filter(Boolean))
+    : null
+  const isLocked = lockTime ? nowTs >= lockTime : false
+
+  const lockCountdown = (() => {
+    if (!lockTime || isLocked) return null
+    const ms = lockTime - nowTs
+    const totalMin = Math.floor(ms / 60000)
+    if (totalMin >= 60) {
+      const h = Math.floor(totalMin / 60)
+      const m = totalMin % 60
+      return m > 0 ? `${h}h ${m}m` : `${h}h`
+    }
+    return totalMin <= 0 ? 'soon' : `${totalMin}m`
+  })()
+
   const submittedPlayers = new Set(picks.map(p => p.player.trim().toUpperCase()))
   const waiting = KNOWN_PLAYERS.filter(p => !submittedPlayers.has(p))
   const allIn = waiting.length === 0 && picks.length === KNOWN_PLAYERS.length
@@ -346,11 +464,36 @@ export default function ThisWeek({ compactMode, showOdds }) {
     fetchSchedule(selectedWeek)
   }, [selectedWeek])
 
+  // Keep nowTs fresh so isLocked flips at kickoff automatically
+  useEffect(() => {
+    const id = setInterval(() => setNowTs(Date.now()), 30000)
+    return () => clearInterval(id)
+  }, [])
+
+  // Auto-cleanse: clear form when picks lock
+  useEffect(() => {
+    if (isLocked) setForm({ player: '', game: '', lock: '', odds: '' })
+  }, [isLocked])
+
+  // Audit: if previous week has unsettled picks, hold on that week
+  useEffect(() => {
+    const currentWeek = getCurrentNflWeek()
+    if (currentWeek <= 1) return
+    const prevKey = `${CURRENT_SEASON}-NFL-W${String(currentWeek - 1).padStart(2, '0')}`
+    fetch(`${API}/picks?week=${prevKey}`)
+      .then(r => r.json())
+      .then(data => {
+        const prevPicks = data?.picks || data || []
+        const hasUnsettled = prevPicks.some(p => p.lock && !p.result)
+        if (hasUnsettled) setSelectedWeek(currentWeek - 1)
+      })
+      .catch(() => {})
+  }, [])
+
+  const isEditing = form.player && submittedPlayers.has(form.player.trim().toUpperCase())
+
   function validate() {
     if (!form.player) return 'Select your name'
-    if (submittedPlayers.has(form.player.trim().toUpperCase())) {
-      return `${form.player} already has a lock in for Week ${selectedWeek}. Remove it first to change.`
-    }
     const rawGame = form.game === '__other__' ? customGame.trim() : form.game
     const gameVal = normalizeGameString(rawGame)
     if (!gameVal) return 'Pick a game'
@@ -413,7 +556,14 @@ export default function ThisWeek({ compactMode, showOdds }) {
   }
 
   function handleDelete(player) {
+    if (isLocked) return
     doDelete(player)
+  }
+
+  function handleEdit(pick) {
+    setForm({ player: pick.player, game: pick.game || '', lock: pick.lock || '', odds: pick.odds != null ? String(pick.odds) : '' })
+    setFormError(null)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   return (
@@ -426,27 +576,33 @@ export default function ThisWeek({ compactMode, showOdds }) {
       )}
 
       {/* Week selector */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
-        <label className="text-slate-400 text-xs block mb-2">2026 NFL Season — Select Week</label>
+      <div className={`rounded-xl border p-4 ${isGolden ? 'bg-yellow-900/60 border-yellow-600/40' : 'bg-slate-800 border-slate-700'}`}>
+        <label className="text-slate-400 text-xs block mb-2">{CURRENT_SEASON} NFL Season — Select Week</label>
         <div className="flex flex-wrap gap-2">
-          {NFL_WEEKS.map(w => (
-            <button
-              key={w}
-              onClick={() => setSelectedWeek(w)}
-              className={`w-10 h-10 rounded-lg text-sm font-bold transition-colors ${
-                selectedWeek === w
-                  ? 'bg-yellow-500 text-slate-900'
-                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-              }`}
-            >
-              {w}
-            </button>
-          ))}
+          {NFL_WEEKS.map(w => {
+            const isFuture = w > getCurrentNflWeek()
+            return (
+              <button
+                key={w}
+                onClick={() => !isFuture && setSelectedWeek(w)}
+                disabled={isFuture}
+                className={`w-10 h-10 rounded-lg text-sm font-bold transition-colors ${
+                  selectedWeek === w
+                    ? 'bg-yellow-500 text-slate-900'
+                    : isFuture
+                      ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                }`}
+              >
+                {w}
+              </button>
+            )
+          })}
         </div>
       </div>
 
       {/* Status bar */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700 p-4 flex flex-wrap gap-4 items-center">
+      <div className={`rounded-xl border p-4 flex flex-wrap gap-4 items-center ${isGolden ? 'bg-gradient-to-r from-yellow-900/80 to-amber-900/80 border-yellow-500/50 shadow shadow-yellow-700/30' : 'bg-slate-800 border-slate-700'}`}>
         <div>
           <div className="text-slate-400 text-xs">Week</div>
           <div className="text-2xl font-black text-yellow-400">{selectedWeek}</div>
@@ -475,34 +631,42 @@ export default function ThisWeek({ compactMode, showOdds }) {
       {/* Parlay — running when partial, full reveal when all 6 in */}
       {parlay && (
         allIn ? (
-          <div className="bg-gradient-to-r from-yellow-900/40 to-green-900/30 rounded-xl border border-yellow-500/40 p-5 text-center">
-            <div className="text-yellow-300 text-sm font-semibold mb-1">💰 This Week's Group Parlay</div>
-            <div className="text-5xl font-black text-yellow-400 my-2">
+          <div className={`rounded-xl border p-5 text-center ${isGolden ? 'bg-gradient-to-r from-yellow-500/30 via-yellow-400/20 to-yellow-500/30 border-yellow-400/70 shadow-lg shadow-yellow-600/30' : 'bg-gradient-to-r from-yellow-900/40 to-green-900/30 border-yellow-500/40'}`}>
+            <div className={`text-sm font-semibold mb-1 ${isGolden ? 'text-yellow-300 tracking-widest uppercase' : 'text-yellow-300'}`}>💰 {isGolden ? '🏆 GOLDEN PARLAY 🏆' : "This Week's Group Parlay"}</div>
+            <div className={`text-5xl font-black my-2 ${isGolden ? 'text-yellow-300 drop-shadow-[0_0_16px_rgba(234,179,8,0.8)]' : 'text-yellow-400'}`}>
               {parlay.american > 0 ? `+${parlay.american}` : parlay.american}
             </div>
-            <div className="text-slate-400 text-sm">
+            <div className={`text-sm ${isGolden ? 'text-yellow-400/70' : 'text-slate-400'}`}>
               ${parlay.payout100} profit on a $100 bet
             </div>
           </div>
         ) : (
-          <div className="bg-slate-800/60 rounded-xl border border-slate-600/40 p-4 flex items-center gap-4">
+          <div className={`rounded-xl border p-4 flex items-center gap-4 ${isGolden ? 'bg-yellow-900/50 border-yellow-600/40' : 'bg-slate-800/60 border-slate-600/40'}`}>
             <div className="flex-1 min-w-0">
-              <div className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-0.5">Running Parlay</div>
-              <div className="text-slate-500 text-xs">{picksWithOdds.length} / {KNOWN_PLAYERS.length} picks locked</div>
+              <div className={`text-xs font-semibold uppercase tracking-wider mb-0.5 ${isGolden ? 'text-yellow-400' : 'text-slate-400'}`}>Running Parlay</div>
+              <div className={`text-xs ${isGolden ? 'text-yellow-600' : 'text-slate-500'}`}>{picksWithOdds.length} / {KNOWN_PLAYERS.length} picks locked</div>
             </div>
             <div className="text-right shrink-0">
-              <div className="text-2xl font-black text-slate-300">
+              <div className={`text-2xl font-black ${isGolden ? 'text-yellow-300' : 'text-slate-300'}`}>
                 {parlay.american > 0 ? `+${parlay.american}` : parlay.american}
               </div>
-              <div className="text-slate-500 text-xs">${parlay.payout100} / $100</div>
+              <div className={`text-xs ${isGolden ? 'text-yellow-600' : 'text-slate-500'}`}>${parlay.payout100} / $100</div>
             </div>
           </div>
         )
       )}
 
       {/* Submit form */}
+      {isLocked ? (
+        <div className={`rounded-xl border p-4 text-center text-sm ${isGolden ? 'border-yellow-600/40 bg-yellow-900/40 text-yellow-400' : 'border-slate-700/50 bg-slate-800/40 text-slate-400'}`}>
+          🔒 Picks locked · games are underway
+        </div>
+      ) : (
       <div className="bg-slate-800 rounded-xl border border-slate-700 p-5">
-        <h2 className="font-semibold text-slate-200 mb-4">🔒 Submit Your Lock — Week {selectedWeek}</h2>
+        <h2 className="font-semibold text-slate-200 mb-4">
+          🔒 {isEditing ? 'Update Your Lock' : 'Submit Your Lock'} — Week {selectedWeek}
+          {lockCountdown && <span className="ml-2 text-xs font-normal text-yellow-400">Locks in {lockCountdown}</span>}
+        </h2>
 
         {formError && (
           <div className="mb-3 bg-red-500/10 border border-red-500/30 text-red-300 rounded-lg p-3 text-sm">
@@ -609,19 +773,27 @@ export default function ThisWeek({ compactMode, showOdds }) {
               disabled={submitting}
               className="bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-900 font-bold px-6 py-2.5 rounded-lg text-sm transition-colors"
             >
-              {submitting ? 'Locking in…' : '🔒 Lock It In'}
+              {submitting ? 'Saving…' : isEditing ? '✏️ Update Lock' : '🔒 Lock It In'}
             </button>
+            {isEditing && !submitting && (
+              <button
+                type="button"
+                onClick={() => { setForm({ player: '', game: '', lock: '', odds: '' }); setFormError(null) }}
+                className="text-slate-500 hover:text-slate-300 text-sm transition-colors"
+              >Cancel</button>
+            )}
             {submitted && (
-              <span className="text-green-400 text-sm font-semibold">✅ Pick locked!</span>
+              <span className="text-green-400 text-sm font-semibold">✅ {isEditing ? 'Updated!' : 'Pick locked!'}</span>
             )}
           </div>
         </form>
       </div>
+      )}
 
       {/* Picks board */}
       {picks.length > 0 && (
-        <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
+        <div className={`rounded-xl border overflow-hidden ${isGolden ? 'bg-gradient-to-b from-yellow-900/70 to-amber-950/80 border-yellow-500/50 shadow-lg shadow-yellow-900/40' : 'bg-slate-800 border-slate-700'}`}>
+          <div className={`px-4 py-3 border-b flex items-center justify-between ${isGolden ? 'border-yellow-600/40' : 'border-slate-700'}`}>
             <h2 className="font-semibold text-slate-200">Week {selectedWeek} Locks</h2>
             <div className="flex items-center gap-2">
               {parlayResult && (
@@ -633,10 +805,10 @@ export default function ThisWeek({ compactMode, showOdds }) {
               {loading && <span className="text-slate-500 text-xs">refreshing…</span>}
             </div>
           </div>
-          <div className="divide-y divide-slate-700/50">
+          <div className={`divide-y ${isGolden ? 'divide-yellow-700/30' : 'divide-slate-700/50'}`}>
             {picks.map(pick => (
-              <div key={pick.player} className={`flex items-center gap-3 px-4 ${compactMode ? 'py-2' : 'py-3'}`}>
-                <div className={`w-2 rounded-full shrink-0 ${compactMode ? 'h-7' : 'h-10'}`} style={{ background: getColor(pick.player) }} />
+              <div key={pick.player} className={`flex items-center gap-3 px-4 py-3 ${isGolden ? 'hover:bg-yellow-800/20' : ''}`}>
+                <div className="w-2 h-10 rounded-full shrink-0" style={{ background: getColor(pick.player) }} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-sm" style={{ color: getColor(pick.player) }}>
@@ -646,8 +818,8 @@ export default function ThisWeek({ compactMode, showOdds }) {
                       <span className="text-slate-500 text-xs">{pick.game}</span>
                     )}
                   </div>
-                  <div className="text-slate-100 text-sm font-medium">{pick.lock}</div>
-                  <LivePickStrip pick={pick} weekNum={selectedWeek} />
+                  <div className={`text-sm font-medium ${isGolden ? 'text-yellow-100' : 'text-slate-100'}`}>{pick.lock}</div>
+                  <LivePickStrip pick={pick} weekNum={selectedWeek} isLocked={isLocked} />
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   {showOdds !== false && formatOdds(pick.odds) && (
@@ -655,24 +827,38 @@ export default function ThisWeek({ compactMode, showOdds }) {
                       {formatOdds(pick.odds)}
                     </span>
                   )}
-                  {['W', 'L', 'P'].map(r => (
-                    <button key={r} onClick={() => setPickResult(pick.player, pick.result === r ? null : r)}
-                      className={`text-xs font-bold w-7 h-6 rounded border transition-all ${
-                        pick.result === r
-                          ? r === 'W' ? 'bg-green-500/30 text-green-300 border-green-500/50'
-                            : r === 'L' ? 'bg-red-500/30 text-red-300 border-red-500/50'
-                            : 'bg-yellow-500/30 text-yellow-300 border-yellow-500/50'
-                          : 'bg-transparent text-slate-600 border-slate-700 hover:text-slate-400 hover:border-slate-500'
-                      }`}>{r}</button>
-                  ))}
+                  {pick.result ? (
+                    <button
+                      onClick={() => request(() => setPickResult(pick.player, null))}
+                      className={`w-9 h-9 rounded-full text-sm font-black border-2 transition-all ${
+                        pick.result === 'W' ? 'bg-green-500/25 text-green-300 border-green-500/60 hover:bg-green-500/40'
+                        : pick.result === 'L' ? 'bg-red-500/25 text-red-300 border-red-500/60 hover:bg-red-500/40'
+                        : 'bg-yellow-500/25 text-yellow-300 border-yellow-500/60 hover:bg-yellow-500/40'
+                      }`}
+                      title="Click to clear result (admin)"
+                    >{pick.result}</button>
+                  ) : (
+                    ['W', 'L', 'P'].map(r => (
+                      <button key={r} onClick={() => request(() => setPickResult(pick.player, r))}
+                        className="text-xs font-bold w-7 h-6 rounded border bg-transparent text-slate-600 border-slate-700 hover:text-slate-400 hover:border-slate-500 transition-all"
+                      >{r}</button>
+                    ))
+                  )}
                 </div>
-                <button
-                  onClick={() => handleDelete(pick.player)}
-                  className="text-slate-600 hover:text-red-400 transition-colors ml-1 p-1 rounded"
-                  title="Remove pick"
-                >
-                  ✕
-                </button>
+                {!isLocked && (
+                  <>
+                    <button
+                      onClick={() => handleEdit(pick)}
+                      className="text-slate-600 hover:text-yellow-400 transition-colors p-1 rounded"
+                      title="Edit pick"
+                    >✏️</button>
+                    <button
+                      onClick={() => handleDelete(pick.player)}
+                      className="text-slate-600 hover:text-red-400 transition-colors p-1 rounded"
+                      title="Remove pick"
+                    >✕</button>
+                  </>
+                )}
               </div>
             ))}
           </div>

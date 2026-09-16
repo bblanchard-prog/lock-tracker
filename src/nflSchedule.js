@@ -118,9 +118,12 @@ export function getGamesForWeek(weekNum) {
 export const NFL_WEEKS = Array.from({ length: 18 }, (_, i) => i + 1)
 
 // Returns the current NFL week based on the season start date (Week 1 = Sept 10, 2026 Thursday)
+export const CURRENT_SEASON = 2026
+
 export function getCurrentNflWeek() {
-  const WEEK1_START = new Date('2026-09-10T00:00:00')
+  const WEEK1_START = new Date('2026-09-10T00:00:00Z')
   const daysSince = (Date.now() - WEEK1_START.getTime()) / (1000 * 60 * 60 * 24)
   if (daysSince < 0) return 1
-  return Math.min(18, Math.floor(daysSince / 7) + 1)
+  // +2 day offset: advances to next week on Tuesday after Sunday/MNF games end
+  return Math.min(18, Math.floor((daysSince + 2) / 7) + 1)
 }

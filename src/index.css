@@ -10,3 +10,81 @@ body {
 #root {
   min-height: 100vh;
 }
+
+/* ============================================================
+   CELEBRATION ANIMATION
+   ============================================================ */
+@keyframes celebIn {
+  from { opacity: 0; transform: scale(0.4) translateY(40px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ============================================================
+   GOLDEN MODE — override every slate/gray surface with gold
+   ============================================================ */
+
+/* Backgrounds */
+.golden .bg-slate-900 { background-color: #431407 !important; }
+.golden .bg-slate-800 { background-color: rgba(120, 53, 15, 0.9) !important; }
+.golden .bg-slate-700 { background-color: rgba(161, 98, 7, 0.6) !important; }
+.golden .bg-slate-800\/60 { background-color: rgba(120, 53, 15, 0.6) !important; }
+.golden .bg-slate-800\/40 { background-color: rgba(120, 53, 15, 0.4) !important; }
+.golden .bg-slate-800\/50 { background-color: rgba(120, 53, 15, 0.5) !important; }
+.golden .bg-slate-700\/50 { background-color: rgba(161, 98, 7, 0.5) !important; }
+.golden .bg-slate-700\/40 { background-color: rgba(161, 98, 7, 0.4) !important; }
+.golden .bg-slate-700\/30 { background-color: rgba(161, 98, 7, 0.3) !important; }
+.golden .bg-slate-800\/30 { background-color: rgba(120, 53, 15, 0.3) !important; }
+
+/* Borders */
+.golden .border-slate-700 { border-color: rgba(161, 98, 7, 0.55) !important; }
+.golden .border-slate-600 { border-color: rgba(202, 138, 4, 0.55) !important; }
+.golden .border-slate-700\/50 { border-color: rgba(161, 98, 7, 0.35) !important; }
+.golden .border-slate-700\/30 { border-color: rgba(161, 98, 7, 0.25) !important; }
+.golden .border-slate-600\/40 { border-color: rgba(202, 138, 4, 0.35) !important; }
+
+/* Dividers */
+.golden .divide-slate-700\/50 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(161, 98, 7, 0.3) !important; }
+.golden .divide-slate-600\/50 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(202, 138, 4, 0.3) !important; }
+
+/* Text */
+.golden .text-slate-100 { color: #fef9c3 !important; }
+.golden .text-slate-200 { color: #fef08a !important; }
+.golden .text-slate-300 { color: #fde047 !important; }
+.golden .text-slate-400 { color: rgba(253, 224, 71, 0.65) !important; }
+.golden .text-slate-500 { color: rgba(202, 138, 4, 0.6) !important; }
+
+/* Form inputs */
+.golden input,
+.golden select,
+.golden textarea {
+  background-color: rgba(120, 53, 15, 0.8) !important;
+  border-color: rgba(161, 98, 7, 0.6) !important;
+  color: #fef9c3 !important;
+}
+
+/* Hover states for inputs */
+.golden input::placeholder,
+.golden textarea::placeholder {
+  color: rgba(202, 138, 4, 0.5) !important;
+}
+
+/* Buttons / chips */
+.golden .bg-slate-700 { background-color: rgba(161, 98, 7, 0.55) !important; }
+.golden .bg-slate-600 { background-color: rgba(180, 110, 5, 0.55) !important; }
+.golden .hover\:bg-slate-600:hover { background-color: rgba(202, 138, 4, 0.7) !important; }
+.golden .hover\:bg-slate-700:hover { background-color: rgba(161, 98, 7, 0.7) !important; }
+.golden .bg-slate-700\/30 { background-color: rgba(161, 98, 7, 0.25) !important; }
+.golden .bg-slate-500\/20 { background-color: rgba(120, 53, 15, 0.4) !important; }
+
+/* Table rows */
+.golden tr:hover { background-color: rgba(161, 98, 7, 0.15) !important; }
+.golden .hover\:bg-slate-700\/30:hover { background-color: rgba(161, 98, 7, 0.2) !important; }
+
+/* Overrides for week number buttons, result badges etc */
+.golden .text-slate-300 { color: #fef08a !important; }
+.golden .text-slate-600 { color: rgba(202, 138, 4, 0.55) !important; }
+.golden .text-slate-900 { color: #451a03 !important; }
+
+/* Scrollbars */
+.golden ::-webkit-scrollbar-track { background: rgba(120, 53, 15, 0.3); }
+.golden ::-webkit-scrollbar-thumb { background: rgba(161, 98, 7, 0.6); }

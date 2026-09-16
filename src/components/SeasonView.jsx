@@ -893,14 +893,13 @@ export default function SeasonView({ allSeasons, liveParlayWins = [] }) {
                               {dnp ? <span className="text-yellow-500 text-xs italic">no pick</span> : (
                                 <div>
                                   <div>{pick.lock || '—'}</div>
-                                  {season.year >= 2026 ? (
-                                    <ScoreInput pick={pick} year={season.year} weekNum={week.weekNum} onSaved={reloadOverrides} />
-                                  ) : (() => {
+                                  {(() => {
                                     const score = resolveWeekOutcome(pick, week.weekNum)
                                     return (
                                       <>
                                         {score && <div className="text-slate-500 text-xs mt-0.5">Final: {score}</div>}
                                         <PropStatLine year={season.year} weekNum={week.weekNum} pick={pick} />
+                                        {season.year >= 2026 && <ScoreInput pick={pick} year={season.year} weekNum={week.weekNum} onSaved={reloadOverrides} />}
                                       </>
                                     )
                                   })()}
@@ -910,41 +909,46 @@ export default function SeasonView({ allSeasons, liveParlayWins = [] }) {
                             <td className="px-4 py-2.5 text-right text-slate-400 font-mono text-xs">{formatOdds(pick.odds)}</td>
                             <td className="px-4 py-2.5 text-right">
                               {season.year >= 2026 && !dnp ? (
-                                <div className="flex items-center justify-end gap-1">
-                                  {['W', 'L', 'P'].map(r => (
-                                    <button key={r} onClick={e => {
+                                pick.result ? (
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <ResultBadge result={pick.result} />
+                                    <button onClick={e => {
                                       e.stopPropagation()
-                                      const next = pick.result === r ? null : r
-                                      fetch(`${API}/overrides?year=${season.year}&week=${week.weekNum}&player=${pick.player.trim().toUpperCase()}`, {
+                                      request(() => fetch(`${API}/overrides?year=${season.year}&week=${week.weekNum}&player=${pick.player.trim().toUpperCase()}`, {
                                         method: 'PUT',
                                         headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ result: next }),
-                                      }).then(() => reloadOverrides())
-                                    }} className={`text-xs font-bold w-7 h-6 rounded border transition-all ${
-                                      pick.result === r
-                                        ? r === 'W' ? 'bg-green-500/30 text-green-300 border-green-500/50'
-                                          : r === 'L' ? 'bg-red-500/30 text-red-300 border-red-500/50'
-                                          : 'bg-yellow-500/30 text-yellow-300 border-yellow-500/50'
-                                        : 'bg-transparent text-slate-600 border-slate-700 hover:text-slate-400 hover:border-slate-500'
-                                    }`}>{r}</button>
-                                  ))}
-                                </div>
+                                        body: JSON.stringify({ result: null }),
+                                      }).then(() => reloadOverrides()))
+                                    }} className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-600 hover:text-red-400 p-0.5 rounded text-xs" title="Clear result (admin)">✕</button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-end gap-1">
+                                    {['W', 'L', 'P'].map(r => (
+                                      <button key={r} onClick={e => {
+                                        e.stopPropagation()
+                                        request(() => fetch(`${API}/overrides?year=${season.year}&week=${week.weekNum}&player=${pick.player.trim().toUpperCase()}`, {
+                                          method: 'PUT',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ result: r }),
+                                        }).then(() => reloadOverrides()))
+                                      }} className="text-xs font-bold w-7 h-6 rounded border transition-all bg-transparent text-slate-600 border-slate-700 hover:text-slate-400 hover:border-slate-500">{r}</button>
+                                    ))}
+                                  </div>
+                                )
                               ) : (
                                 <ResultBadge result={pick.result} didNotPlace={dnp} />
                               )}
                             </td>
                             <td className="px-2 py-2.5 text-right">
-                              {season.year < 2026 && (
-                                <button
-                                  onClick={e => { e.stopPropagation(); request(() => setEditingKey(rowKey)) }}
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-500 hover:text-yellow-400 p-1 rounded"
-                                  title="Edit pick"
-                                >
-                                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 0l.172.172a2 2 0 010 2.828L12 16H9v-3z" />
-                                  </svg>
-                                </button>
-                              )}
+                              <button
+                                onClick={e => { e.stopPropagation(); request(() => setEditingKey(rowKey)) }}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-500 hover:text-yellow-400 p-1 rounded"
+                                title="Edit pick"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 0l.172.172a2 2 0 010 2.828L12 16H9v-3z" />
+                                </svg>
+                              </button>
                             </td>
                           </tr>
                         )

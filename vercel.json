@@ -12,10 +12,15 @@
     { "source": "/api/subscribe", "destination": "/api/subscribe" },
     { "source": "/api/notify", "destination": "/api/notify" },
     { "source": "/api/notify-sunday", "destination": "/api/notify-sunday" },
+    { "source": "/api/auto-settle", "destination": "/api/auto-settle" },
+    { "source": "/api/normalize-picks", "destination": "/api/normalize-picks" },
+    { "source": "/api/player-stats", "destination": "/api/player-stats" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "crons": [
     { "path": "/api/notify", "schedule": "0 19 * * 6" },
-    { "path": "/api/notify-sunday", "schedule": "0 16 * * 0" }
+    { "path": "/api/notify-sunday", "schedule": "0 16 * * 0" },
+    { "path": "/api/notify-sunday?kickoff=1", "schedule": "30 17 * * 0" },
+    { "path": "/api/notify-sunday?kickoff=1", "schedule": "30 23 * * 4" }
   ]
 }
