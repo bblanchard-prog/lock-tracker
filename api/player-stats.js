@@ -135,32 +135,50 @@ export default async function handler(req, res) {
       'POLLARD': 'Tony Pollard', 'JEUDY': 'Jerry Jeudy',
     }
     const { playerFrag, category, label } = intent
-    const searchFrag = SHORT_TO_FULL[playerFrag.toUpperCase()] || playerFrag
-    let playerName = null, actual = null
-
     const playerGroups = bsData.boxscore?.players || []
-    outer: for (const group of playerGroups) {
-      for (const statGroup of (group.statistics || [])) {
-        if (statGroup.name?.toLowerCase() !== category) continue
-        // For pass attempts, ESPN stores as C/ATT combined
-        const lookupLabel = label === 'ATT' ? 'C/ATT' : label
-        const labelIdx = (statGroup.labels || []).indexOf(lookupLabel)
-        if (labelIdx === -1) continue
-        for (const entry of (statGroup.athletes || [])) {
-          const dispName = entry.athlete?.displayName || ''
-          const normalize = s => s.toUpperCase().replace(/[^A-Z0-9 ]/g, '')
-          if (normalize(dispName).includes(normalize(searchFrag))) {
-            playerName = dispName
-            const raw = entry.stats?.[labelIdx] ?? null
-            if (raw !== null && label === 'ATT') {
-              actual = typeof raw === 'string' && raw.includes('/') ? raw.split('/')[1] : raw
-            } else {
-              actual = raw
+    const normalize = s => s.toUpperCase().replace(/[^A-Z0-9 ]/g, '')
+    const lookupLabel = label === 'ATT' ? 'C/ATT' : label
+
+    function findOneStat(frag) {
+      const searchName = SHORT_TO_FULL[frag.toUpperCase()] || frag
+      for (const group of playerGroups) {
+        for (const statGroup of (group.statistics || [])) {
+          if (statGroup.name?.toLowerCase() !== category) continue
+          const labelIdx = (statGroup.labels || []).indexOf(lookupLabel)
+          if (labelIdx === -1) continue
+          for (const entry of (statGroup.athletes || [])) {
+            const dispName = entry.athlete?.displayName || ''
+            if (normalize(dispName).includes(normalize(searchName))) {
+              const raw = entry.stats?.[labelIdx] ?? null
+              let val = raw
+              if (raw !== null && label === 'ATT') {
+                val = typeof raw === 'string' && raw.includes('/') ? raw.split('/')[1] : raw
+              }
+              return { playerName: dispName, actual: val }
             }
-            break outer
           }
         }
       }
+      return { playerName: null, actual: null }
+    }
+
+    let playerName = null, actual = null
+
+    // Combined prop: "Player A vs Player B u77.5 Rec Yds"
+    const combinedFrags = playerFrag.split(/\s+(?:vs\.?|and|\+)\s+/i).map(s => s.trim()).filter(s => s.length > 1)
+    if (combinedFrags.length === 2) {
+      const [r1, r2] = combinedFrags.map(findOneStat)
+      const names = [r1, r2].filter(r => r.playerName).map(r => r.playerName)
+      if (names.length > 0) {
+        playerName = names.join(' + ')
+        if (r1.actual !== null && r2.actual !== null) {
+          actual = String((parseFloat(r1.actual) || 0) + (parseFloat(r2.actual) || 0))
+        }
+      }
+    } else {
+      const found = findOneStat(playerFrag)
+      playerName = found.playerName
+      actual = found.actual
     }
 
     const result = { playerName, actual, label: intent.label, ou: intent.ou, line: intent.line, gameShortName, homeScore, awayScore, homeAbbr, awayAbbr, gameStatus: statusState, period, clock }
