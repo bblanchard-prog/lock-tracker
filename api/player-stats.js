@@ -181,8 +181,7 @@ export default async function handler(req, res) {
       actual = found.actual
     }
 
-    const _debug = playerName === null ? { combinedFrags, groupCount: playerGroups.length, firstGroupStatNames: playerGroups[0]?.statistics?.map(s=>s.name) } : undefined
-    const result = { playerName, actual, label: intent.label, ou: intent.ou, line: intent.line, gameShortName, homeScore, awayScore, homeAbbr, awayAbbr, gameStatus: statusState, period, clock, _debug }
+    const result = { playerName, actual, label: intent.label, ou: intent.ou, line: intent.line, gameShortName, homeScore, awayScore, homeAbbr, awayAbbr, gameStatus: statusState, period, clock }
     if (result.playerName !== null) {
       cache[cacheKey] = result
       if (statusState === 'post') writeFileCache(cacheKey, result)
