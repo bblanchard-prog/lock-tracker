@@ -139,7 +139,7 @@ export default async function handler(req, res) {
     const normalize = s => s.toUpperCase().replace(/[^A-Z0-9 ]/g, '')
     const lookupLabel = label === 'ATT' ? 'C/ATT' : label
 
-    function findOneStat(frag) {
+    const findOneStat = (frag) => {
       const searchName = SHORT_TO_FULL[frag.toUpperCase()] || frag
       for (const group of playerGroups) {
         for (const statGroup of (group.statistics || [])) {
