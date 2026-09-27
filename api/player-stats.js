@@ -186,8 +186,9 @@ export default async function handler(req, res) {
       cache[cacheKey] = result
       if (statusState === 'post') writeFileCache(cacheKey, result)
     }
-    const maxAge = statusState === 'post' ? 86400 : 60
-    res.setHeader('Cache-Control', `s-maxage=${maxAge}`)
+    // Don't cache at the CDN edge when playerName is unresolved — forces fresh fetch next time
+    const maxAge = result.playerName === null ? 0 : statusState === 'post' ? 86400 : 60
+    res.setHeader('Cache-Control', maxAge === 0 ? 'no-store' : `s-maxage=${maxAge}`)
     res.status(200).json(result)
   } catch (e) {
     res.status(200).json(null)

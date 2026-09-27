@@ -177,7 +177,7 @@ function LivePickStrip({ pick, weekNum, isLocked }) {
 
   // Prop stat hook — only poll live when not yet settled
   const { data: propData } = usePlayerStat(
-    CURRENT_SEASON, weekNum, isLocked && isProp ? pick.lock : null, isLocked && isProp, pick.result ? null : 60000, pick.game ?? null
+    CURRENT_SEASON, weekNum, isLocked && isProp ? pick.lock : null, isLocked && isProp, pick.result ? null : 30000, pick.game ?? null
   )
 
   // Nothing renders until picks are locked (games haven't started yet)

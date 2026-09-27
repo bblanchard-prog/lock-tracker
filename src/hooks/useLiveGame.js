@@ -15,8 +15,8 @@ function normalizeAbbr(abbr) {
 
 // Module-level cache: key → { data, ts }
 const cache = {}
-const STALE_IN = 60_000    // 60s when in-progress
-const STALE_PRE = 300_000  // 5 min when pre-game
+const STALE_IN = 30_000    // 30s when in-progress
+const STALE_PRE = 120_000  // 2 min when pre-game
 
 async function fetchWeekGames(weekNum) {
   const cacheKey = `week-${weekNum}`
