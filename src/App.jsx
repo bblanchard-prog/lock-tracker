@@ -5,9 +5,12 @@ import AllTimeStats from './components/AllTimeStats.jsx'
 import CraziestOdds from './components/CraziestOdds.jsx'
 import ThisWeek from './components/ThisWeek.jsx'
 import Leaderboard from './components/Leaderboard.jsx'
+import { useAdminAuth } from './useAdminAuth.jsx'
 import { API } from './api.js'
 import confetti from 'canvas-confetti'
 import './index.css'
+
+const ADMIN_HASH = 'b48cd264507888552dfc132357c1b5b96a158ec451830850343abecbf4ff6d04'
 
 const TABS = ['This Week', 'Season', 'Leaderboard', 'Stats', 'Crazy Odds']
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY
@@ -32,16 +35,23 @@ function Toggle({ on, onToggle, disabled }) {
 }
 
 export default function App() {
+  const { request: requestAdmin, Modal: AdminModal } = useAdminAuth()
   const [tab, setTab] = useState('This Week')
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [darkMode, setDarkMode] = useState(true)
-  const [showOdds, setShowOdds] = useState(true)
+  const [darkMode, setDarkMode] = useState(() => {
+    try { return localStorage.getItem('darkMode') !== 'false' } catch { return true }
+  })
+  const [showOdds, setShowOdds] = useState(() => {
+    try { const v = localStorage.getItem('showOdds'); return v === null ? true : v !== 'false' } catch { return true }
+  })
   const [notifStatus, setNotifStatus] = useState('default')
   const [liveParlayWins, setLiveParlayWins] = useState([])
   const [isGolden, setIsGolden] = useState(false)
   const [live2026Weeks, setLive2026Weeks] = useState([])
   const [showCelebration, setShowCelebration] = useState(false)
   const celebrationFired = useRef(false)
+  const [settling, setSettling] = useState(false)
+  const [settleMsg, setSettleMsg] = useState(null)
   const [notifPrefs, setNotifPrefs] = useState(() => {
     try {
       const saved = localStorage.getItem('notif-prefs')
@@ -90,6 +100,14 @@ export default function App() {
     const id = setInterval(fetchLive, 30000)
     return () => clearInterval(id)
   }, [])
+  useEffect(() => {
+    try { localStorage.setItem('darkMode', darkMode) } catch {}
+  }, [darkMode])
+
+  useEffect(() => {
+    try { localStorage.setItem('showOdds', showOdds) } catch {}
+  }, [showOdds])
+
   useEffect(() => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
       setNotifStatus('unsupported')
@@ -227,6 +245,7 @@ export default function App() {
 
   return (
     <div className={`min-h-screen ${bg} transition-colors duration-300 ${isGolden ? 'golden' : ''}`}>
+      {AdminModal}
 
       {/* Golden shimmer overlay */}
       {isGolden && (
@@ -292,7 +311,7 @@ export default function App() {
       </header>
 
       {/* Nav */}
-      <nav className={`${navBg} border-b sticky top-0 z-10 relative`}>
+      <nav className={`${navBg} border-b relative z-20`}>
         <div className="max-w-5xl mx-auto flex gap-1 px-2 py-2 overflow-x-auto scrollbar-none">
           {TABS.map(t => (
             <button key={t} onClick={() => setTab(t)}
@@ -381,6 +400,46 @@ export default function App() {
                   ))}
                 </div>
               )}
+            </div>
+          </section>
+
+          {/* Admin */}
+          <section>
+            <p className={`text-xs font-semibold uppercase tracking-wider mb-3 ${labelColor}`}>Admin</p>
+            <div className={`rounded-xl overflow-hidden ${sectionBg}`}>
+              <div className="px-4 py-3.5">
+                <p className="text-sm font-medium mb-1">Manual Settle</p>
+                <p className={`text-xs ${labelColor} mb-3`}>Force-run auto-settle right now — use if picks haven't settled after games ended.</p>
+                <button
+                  onClick={() => requestAdmin(async () => {
+                    setSettling(true)
+                    setSettleMsg(null)
+                    try {
+                      const res = await fetch(`${API}/auto-settle`, {
+                        method: 'POST',
+                        headers: {
+                          'Authorization': `AdminHash ${ADMIN_HASH}`,
+                          'Content-Type': 'application/json',
+                        },
+                      })
+                      const data = await res.json()
+                      setSettleMsg(
+                        data.settled != null ? `Settled ${data.settled} pick${data.settled !== 1 ? 's' : ''}`
+                        : data.message || 'Done — nothing to settle'
+                      )
+                    } catch {
+                      setSettleMsg('Error — check network')
+                    } finally {
+                      setSettling(false)
+                    }
+                  })}
+                  disabled={settling}
+                  className="w-full py-2 rounded-lg bg-slate-600 hover:bg-slate-500 text-sm text-slate-200 font-semibold disabled:opacity-50 transition-colors"
+                >
+                  {settling ? '⏳ Settling…' : '⚡ Settle Now'}
+                </button>
+                {settleMsg && <p className={`text-xs mt-2 text-center ${settleMsg.startsWith('Error') ? 'text-red-400' : 'text-green-400'}`}>{settleMsg}</p>}
+              </div>
             </div>
           </section>
 

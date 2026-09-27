@@ -71,16 +71,9 @@ export default async function handler(req, res) {
       if (!team) return res.status(200).json(null)
     }
 
-    const opener = SEASON_OPENERS[parseInt(year)]
-    if (!opener) return res.status(200).json(null)
+    if (!SEASON_OPENERS[parseInt(year)]) return res.status(200).json(null)
 
-    const openDate = new Date(opener + 'T00:00:00Z')
-    const weekStart = new Date(openDate.getTime() + (parseInt(week) - 1) * 7 * 86400000)
-    const weekEnd = new Date(weekStart.getTime() + 8 * 86400000)
-    const fmt = d => d.toISOString().slice(0, 10).replace(/-/g, '')
-    const dates = `${fmt(weekStart)}-${fmt(weekEnd)}`
-
-    const sbUrl = `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=${dates}&limit=20`
+    const sbUrl = `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&week=${parseInt(week)}&year=${parseInt(year)}&limit=20`
     const sbRes = await fetch(sbUrl)
     if (!sbRes.ok) return res.status(200).json(null)
     const sbData = await sbRes.json()
@@ -123,7 +116,6 @@ export default async function handler(req, res) {
     }
 
     if (!gameId) {
-      cache[cacheKey] = null
       return res.status(200).json(null)
     }
 

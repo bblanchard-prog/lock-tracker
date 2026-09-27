@@ -15,16 +15,17 @@ export function usePlayerStat(year, weekNum, lock, enabled, pollInterval = null,
     if (cache[key] !== undefined) setData(cache[key].data)
 
     async function doFetch(force = false) {
-      if (!force && cache[key] !== undefined && Date.now() - cache[key].ts < STALE_MS) return
+      const staleMs = cache[key]?.stale ?? STALE_MS
+      if (!force && cache[key] !== undefined && Date.now() - cache[key].ts < staleMs) return
       setLoading(true)
       try {
         const gameParam = game ? `&game=${encodeURIComponent(game)}` : ''
         const r = await fetch(`${API}/player-stats?year=${year}&week=${weekNum}&lock=${encodeURIComponent(lock)}${gameParam}`)
         const d = r.ok ? await r.json() : null
-        cache[key] = { data: d, ts: Date.now() }
+        cache[key] = { data: d, ts: Date.now(), stale: d ? STALE_MS : 30_000 }
         setData(d)
       } catch {
-        cache[key] = { data: null, ts: Date.now() }
+        cache[key] = { data: null, ts: Date.now(), stale: 30_000 }
         setData(null)
       } finally {
         setLoading(false)

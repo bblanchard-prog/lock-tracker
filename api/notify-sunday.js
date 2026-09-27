@@ -1,5 +1,6 @@
 import webpush from 'web-push'
 import { supabase } from './_supabase.js'
+import { CURRENT_SEASON, SEASON_OPENERS } from './_constants.js'
 
 webpush.setVapidDetails(
   process.env.VAPID_EMAIL,
@@ -7,16 +8,15 @@ webpush.setVapidDetails(
   process.env.VAPID_PRIVATE_KEY
 )
 
-const WEEK1_START = new Date('2026-09-10T00:00:00Z')
 const ALL_PLAYERS = ['BRITTON', 'CHRIS', 'COLBY', 'NATHAN', 'LUCAS', 'KADEN']
 
 // Called by Vercel Cron:
-//   0 16 * * 0  — Sunday 10am CST: "locks still missing" reminder
-//   30 17 * * 0 — Sunday 11:30am CST (30 min before 1pm games): ?kickoff=1
-//   30 23 * * 4 — Thursday 5:30pm CST (30 min before TNF): ?kickoff=1
+//   0 19 * * 6  — Saturday 2pm CDT: "get your pick in" reminder (notify.js)
+//   0 16 * * 0  — Sunday 11am CDT: "locks in 1 hour" alert
 export default async function handler(req, res) {
   const now = new Date()
   const isKickoff = req.query?.kickoff === '1'
+  const WEEK1_START = new Date(`${SEASON_OPENERS[CURRENT_SEASON]}T00:00:00Z`)
   const daysSince = (now - WEEK1_START) / (1000 * 60 * 60 * 24)
   const weekNum = daysSince < 0 ? 1 : Math.min(18, Math.floor((daysSince + 2) / 7) + 1)
   const weekKey = `2026-NFL-W${String(weekNum).padStart(2, '0')}`
@@ -40,8 +40,8 @@ export default async function handler(req, res) {
     title = '🏈 Locks in 30 min!'
     body = `${slateLabel} kicks off soon — ${missingNames} still need to lock in.`
   } else {
-    title = '⏰ Lock Tracker — Locks Still Missing!'
-    body = `${missingNames} still haven't submitted their lock for Week ${weekNum}. Games start soon!`
+    title = '🏈 Locks in 1 hour!'
+    body = `${missingNames} still need to lock in before the noon slate kicks off.`
   }
 
   const pending = (subs || []).filter(sub => !sub.prefs || sub.prefs.reminders !== false)

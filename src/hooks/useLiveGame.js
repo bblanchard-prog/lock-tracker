@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { CURRENT_SEASON } from '../nflSchedule.js'
 
 // Maps ESPN abbreviations that differ from our schedule format
 const ESPN_ABBR_MAP = {
@@ -17,14 +18,6 @@ const cache = {}
 const STALE_IN = 60_000    // 60s when in-progress
 const STALE_PRE = 300_000  // 5 min when pre-game
 
-function getDateRange(weekNum) {
-  const WEEK1_START = new Date('2026-09-10T00:00:00Z')
-  const weekStart = new Date(WEEK1_START.getTime() + (weekNum - 1) * 7 * 24 * 60 * 60 * 1000)
-  const weekEnd = new Date(weekStart.getTime() + 8 * 24 * 60 * 60 * 1000)
-  const fmt = d => d.toISOString().slice(0, 10).replace(/-/g, '')
-  return `${fmt(weekStart)}-${fmt(weekEnd)}`
-}
-
 async function fetchWeekGames(weekNum) {
   const cacheKey = `week-${weekNum}`
   // Use week-level cache (shared across all games in same week)
@@ -32,8 +25,7 @@ async function fetchWeekGames(weekNum) {
     return cache[cacheKey].data
   }
   try {
-    const dates = getDateRange(weekNum)
-    const url = `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=${dates}&limit=20`
+    const url = `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&week=${weekNum}&year=${CURRENT_SEASON}&limit=20`
     const res = await fetch(url)
     if (!res.ok) return null
     const data = await res.json()
@@ -104,12 +96,9 @@ export function useLiveGame(gameField, weekNum) {
 
     poll()
 
-    // Adaptive polling: every 60s when live, every 5 min pre-game, stop when final
-    const id = setInterval(() => {
-      if (gameData?.status === 'final') return
-      poll()
-    }, gameData?.status === 'in' ? STALE_IN : STALE_PRE)
-
+    // Adaptive polling: every 60s when live, every 5 min pre-game, none when final
+    if (gameData?.status === 'final') return () => { cancelled = true }
+    const id = setInterval(poll, gameData?.status === 'in' ? STALE_IN : STALE_PRE)
     return () => { cancelled = true; clearInterval(id) }
   }, [gameField, weekNum, gameData?.status])
 

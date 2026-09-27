@@ -47,6 +47,7 @@ export const PLAYER_TEAM = {
   'JAKE MOODY': 'San Francisco 49ers', 'BROCK PURDY': 'San Francisco 49ers',
   'CMC ': 'San Francisco 49ers', 'CHRISTIAN MCCAFFREY': 'San Francisco 49ers',
   'KYLE JUSZCZYK': 'San Francisco 49ers', 'MAC JONES': 'San Francisco 49ers',
+  'FREIERMUTH': 'Pittsburgh Steelers', 'PAT FREIERMUTH': 'Pittsburgh Steelers',
   'WARREN ': 'Pittsburgh Steelers',
   'NOAH FANT': 'Seattle Seahawks', 'KENNETH WALKER': 'Seattle Seahawks',
   'TREY PALMER': 'Tampa Bay Buccaneers', 'MIKE EVANS': 'Tampa Bay Buccaneers',

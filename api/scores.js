@@ -48,15 +48,10 @@ export default async function handler(req, res) {
   }
 
   // DB empty for this year/week — fall back to ESPN scoreboard
-  const opener = SEASON_OPENERS[parseInt(year)]
-  if (!opener) return res.status(200).json([])
+  if (!SEASON_OPENERS[parseInt(year)]) return res.status(200).json([])
 
   try {
-    const openDate = new Date(opener + 'T00:00:00Z')
-    const weekStart = new Date(openDate.getTime() + (parseInt(week) - 1) * 7 * 86400000)
-    const weekEnd = new Date(weekStart.getTime() + 8 * 86400000)
-    const fmt = d => d.toISOString().slice(0, 10).replace(/-/g, '')
-    const espnUrl = `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=${fmt(weekStart)}-${fmt(weekEnd)}&limit=20`
+    const espnUrl = `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&week=${parseInt(week)}&year=${parseInt(year)}&limit=20`
 
     const espnRes = await fetch(espnUrl)
     if (!espnRes.ok) return res.status(200).json([])

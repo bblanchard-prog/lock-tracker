@@ -82,7 +82,7 @@ function detectPickType(lock) {
   if (/\bteam\s+total\b/i.test(s)) return 'team_total'
   if (/^(over|under|o|u)[\/\s]*\d/i.test(s)) return 'total'
   if (/^.+?\s*[+\-]\d+(?:\.\d+)?\s*$/.test(s)) return 'spread'
-  if (/^.+?\s+(o(?:ver)?|u(?:nder)?)\s*\d+\.?\d*\s+\S+\s*$/i.test(s)) return 'prop'
+  if (/^.+?\s+(o(?:ver)?|u(?:nder)?)\s*\d+\.?\d*\s+\S.*$/i.test(s)) return 'prop'
   return 'ml'
 }
 
@@ -342,6 +342,35 @@ const RULES = [
   "Sole loser of the week earns the Mickey Mouse 🐭",
 ]
 
+function formatSubmittedAt(iso) {
+  if (!iso) return null
+  const d = new Date(iso)
+  const diffMin = Math.floor((Date.now() - d.getTime()) / 60000)
+  if (diffMin < 1) return 'just now'
+  if (diffMin < 60) return `${diffMin}m ago`
+  if (diffMin < 60 * 24) return `${Math.floor(diffMin / 60)}h ago`
+  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+}
+
+function formatCountdown(lockTime, nowTs) {
+  if (!lockTime) return null
+  const diffMs = lockTime - nowTs
+  if (diffMs <= 0) return null
+  const h = Math.floor(diffMs / 3600000)
+  const m = Math.floor((diffMs % 3600000) / 60000)
+  return h > 0 ? `${h}h ${m}m` : `${m}m`
+}
+
+function buildShareText(picks, result, weekKey) {
+  const emoji = result === 'W' ? '✅ WIN' : '❌ LOSS'
+  const lines = picks.map(p => {
+    const r = p.result === 'W' ? '✅' : p.result === 'L' ? '❌' : p.result === 'P' ? '🔁' : '⏳'
+    const odds = p.odds ? ` (${p.odds > 0 ? '+' : ''}${p.odds})` : ''
+    return `${r} ${p.player}: ${p.lock}${odds}`
+  })
+  return `Lock Tracker — ${weekKey}\nParlay: ${emoji}\n\n${lines.join('\n')}`
+}
+
 function groupGamesBySlot(scheduleGames) {
   // Preserve the server's chronological order — group by slot but maintain original sequence
   const groups = {}
@@ -358,8 +387,8 @@ export default function ThisWeek({ showOdds, isGolden }) {
   const { request, Modal } = useAdminAuth()
   const [selectedWeek, setSelectedWeek] = useState(() => getCurrentNflWeek())
   const [picks, setPicks] = useState([])
-  const [loading, setLoading] = useState(false)
   const [serverError, setServerError] = useState(null)
+  const [weekStatuses, setWeekStatuses] = useState({})
   const [form, setForm] = useState({ player: '', game: '', lock: '', odds: '' })
   const [formError, setFormError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
@@ -367,27 +396,22 @@ export default function ThisWeek({ showOdds, isGolden }) {
   const [customGame, setCustomGame] = useState('')
   const [scheduleGames, setScheduleGames] = useState(null)
   const [nowTs, setNowTs] = useState(Date.now())
+  const [toast, setToast] = useState(null)
 
   const weekKey = `${CURRENT_SEASON}-NFL-W${String(selectedWeek).padStart(2, '0')}`
   const staticGames = getGamesForWeek(selectedWeek)
 
-  // Parlay lock: all picks lock when the first game of the week kicks off
-  const lockTime = scheduleGames?.length
-    ? Math.min(...scheduleGames.map(g => g.ts).filter(Boolean))
-    : null
+  // Parlay lock: all picks lock when the earliest game in the submitted slip kicks off
+  // Exclude TNF/Saturday — only Sunday/MNF games are in scope
+  const sundayGames = scheduleGames?.filter(g => g.slot !== 'TNF' && g.slot !== 'Saturday')
+  const pickedGameLabels = new Set(picks.map(p => normalizeGameString(p.game)).filter(Boolean))
+  const slipGames = sundayGames?.filter(g => pickedGameLabels.has(normalizeGameString(g.label)))
+  const lockTime = slipGames?.length
+    ? Math.min(...slipGames.map(g => g.ts).filter(Boolean))
+    : sundayGames?.length
+      ? Math.min(...sundayGames.map(g => g.ts).filter(Boolean))
+      : null
   const isLocked = lockTime ? nowTs >= lockTime : false
-
-  const lockCountdown = (() => {
-    if (!lockTime || isLocked) return null
-    const ms = lockTime - nowTs
-    const totalMin = Math.floor(ms / 60000)
-    if (totalMin >= 60) {
-      const h = Math.floor(totalMin / 60)
-      const m = totalMin % 60
-      return m > 0 ? `${h}h ${m}m` : `${h}h`
-    }
-    return totalMin <= 0 ? 'soon' : `${totalMin}m`
-  })()
 
   const submittedPlayers = new Set(picks.map(p => p.player.trim().toUpperCase()))
   const waiting = KNOWN_PLAYERS.filter(p => !submittedPlayers.has(p))
@@ -428,7 +452,6 @@ export default function ThisWeek({ showOdds, isGolden }) {
   }, [picks])
 
   async function fetchPicks(wk) {
-    setLoading(true)
     try {
       const res = await fetch(`${API}/picks?week=${wk}`)
       const data = await res.json()
@@ -436,9 +459,25 @@ export default function ThisWeek({ showOdds, isGolden }) {
       setServerError(null)
     } catch {
       setServerError('Cannot reach server — is the app running with `npm run dev`?')
-    } finally {
-      setLoading(false)
     }
+  }
+
+  async function fetchWeekStatuses() {
+    try {
+      const res = await fetch(`${API}/season-picks?year=${CURRENT_SEASON}`)
+      if (!res.ok) return
+      const data = await res.json()
+      const statuses = {}
+      for (const { weekNum, picks: wPicks } of (Array.isArray(data) ? data : [])) {
+        if (!wPicks?.length) continue
+        const withLocks = wPicks.filter(p => p.lock)
+        if (!withLocks.length) continue
+        const anyLoss = withLocks.some(p => p.result === 'L')
+        const allDone = withLocks.every(p => p.result === 'W' || p.result === 'P')
+        statuses[weekNum] = anyLoss ? 'L' : allDone ? 'W' : null
+      }
+      setWeekStatuses(statuses)
+    } catch { /* silent */ }
   }
 
   async function fetchSchedule(week) {
@@ -463,6 +502,12 @@ export default function ThisWeek({ showOdds, isGolden }) {
     setScheduleGames(null)
     fetchSchedule(selectedWeek)
   }, [selectedWeek])
+
+  useEffect(() => {
+    fetchWeekStatuses()
+    const id = setInterval(fetchWeekStatuses, 60000)
+    return () => clearInterval(id)
+  }, [])
 
   // Keep nowTs fresh so isLocked flips at kickoff automatically
   useEffect(() => {
@@ -532,10 +577,12 @@ export default function ThisWeek({ showOdds, isGolden }) {
         return
       }
       setSubmitted(true)
+      setToast(isEditing ? 'Lock updated!' : 'Locked in!')
       setForm({ player: '', game: '', lock: '', odds: '' })
       setCustomGame('')
       await fetchPicks(weekKey)
       setTimeout(() => setSubmitted(false), 3000)
+      setTimeout(() => setToast(null), 2500)
     } catch {
       setFormError('Submit failed — server may be down')
     } finally {
@@ -569,6 +616,14 @@ export default function ThisWeek({ showOdds, isGolden }) {
   return (
     <div className="space-y-5">
       {Modal}
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 z-50 bg-green-600 text-white text-sm font-semibold px-4 py-2.5 rounded-full shadow-lg animate-fade-in-up pointer-events-none">
+          ✅ {toast}
+        </div>
+      )}
+
       {serverError && (
         <div className="bg-red-500/10 border border-red-500/30 text-red-300 rounded-xl p-4 text-sm">
           {serverError}
@@ -581,6 +636,7 @@ export default function ThisWeek({ showOdds, isGolden }) {
         <div className="flex flex-wrap gap-2">
           {NFL_WEEKS.map(w => {
             const isFuture = w > getCurrentNflWeek()
+            const wStatus = weekStatuses[w]
             return (
               <button
                 key={w}
@@ -591,7 +647,11 @@ export default function ThisWeek({ showOdds, isGolden }) {
                     ? 'bg-yellow-500 text-slate-900'
                     : isFuture
                       ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
-                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                      : wStatus === 'W'
+                        ? 'bg-green-700/60 text-green-200 hover:bg-green-700/80'
+                        : wStatus === 'L'
+                          ? 'bg-red-700/60 text-red-200 hover:bg-red-700/80'
+                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                 }`}
               >
                 {w}
@@ -617,7 +677,9 @@ export default function ThisWeek({ showOdds, isGolden }) {
           </div>
           <div className="flex flex-wrap gap-1">
             {waiting.map(p => (
-              <span key={p} className="text-xs px-2 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-300">
+              <span key={p} className={`text-xs px-2 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-300 ${
+                !isLocked && lockTime && (lockTime - nowTs) < 3600000 ? 'animate-pulse' : ''
+              }`}>
                 {p}
               </span>
             ))}
@@ -631,12 +693,24 @@ export default function ThisWeek({ showOdds, isGolden }) {
       {/* Parlay — running when partial, full reveal when all 6 in */}
       {parlay && (
         allIn ? (
-          <div className={`rounded-xl border p-5 text-center ${isGolden ? 'bg-gradient-to-r from-yellow-500/30 via-yellow-400/20 to-yellow-500/30 border-yellow-400/70 shadow-lg shadow-yellow-600/30' : 'bg-gradient-to-r from-yellow-900/40 to-green-900/30 border-yellow-500/40'}`}>
-            <div className={`text-sm font-semibold mb-1 ${isGolden ? 'text-yellow-300 tracking-widest uppercase' : 'text-yellow-300'}`}>💰 {isGolden ? '🏆 GOLDEN PARLAY 🏆' : "This Week's Group Parlay"}</div>
-            <div className={`text-5xl font-black my-2 ${isGolden ? 'text-yellow-300 drop-shadow-[0_0_16px_rgba(234,179,8,0.8)]' : 'text-yellow-400'}`}>
+          <div className={`rounded-xl border p-5 text-center ${
+            parlayResult === 'L'
+              ? 'bg-gradient-to-r from-red-900/50 to-red-800/30 border-red-500/40'
+              : isGolden
+                ? 'bg-gradient-to-r from-yellow-500/30 via-yellow-400/20 to-yellow-500/30 border-yellow-400/70 shadow-lg shadow-yellow-600/30'
+                : 'bg-gradient-to-r from-yellow-900/40 to-green-900/30 border-yellow-500/40'
+          }`}>
+            <div className={`text-sm font-semibold mb-1 ${
+              parlayResult === 'L' ? 'text-red-300' : isGolden ? 'text-yellow-300 tracking-widest uppercase' : 'text-yellow-300'
+            }`}>
+              {parlayResult === 'L' ? '❌ Parlay Lost' : isGolden ? '🏆 GOLDEN PARLAY 🏆' : "💰 This Week's Group Parlay"}
+            </div>
+            <div className={`text-5xl font-black my-2 ${
+              parlayResult === 'L' ? 'text-red-400' : isGolden ? 'text-yellow-300 drop-shadow-[0_0_16px_rgba(234,179,8,0.8)]' : 'text-yellow-400'
+            }`}>
               {parlay.american > 0 ? `+${parlay.american}` : parlay.american}
             </div>
-            <div className={`text-sm ${isGolden ? 'text-yellow-400/70' : 'text-slate-400'}`}>
+            <div className={`text-sm ${parlayResult === 'L' ? 'text-red-400/70' : isGolden ? 'text-yellow-400/70' : 'text-slate-400'}`}>
               ${parlay.payout100} profit on a $100 bet
             </div>
           </div>
@@ -656,6 +730,22 @@ export default function ThisWeek({ showOdds, isGolden }) {
         )
       )}
 
+      {/* Share week results */}
+      {(parlayResult === 'W' || parlayResult === 'L') && picks.length > 0 && (
+        <div className="text-center">
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(buildShareText(picks, parlayResult, weekKey)).catch(() => {})
+              setToast('Copied!')
+              setTimeout(() => setToast(null), 2500)
+            }}
+            className="text-xs text-slate-400 hover:text-slate-200 underline transition-colors"
+          >
+            📋 Copy week results
+          </button>
+        </div>
+      )}
+
       {/* Submit form */}
       {isLocked ? (
         <div className={`rounded-xl border p-4 text-center text-sm ${isGolden ? 'border-yellow-600/40 bg-yellow-900/40 text-yellow-400' : 'border-slate-700/50 bg-slate-800/40 text-slate-400'}`}>
@@ -663,10 +753,7 @@ export default function ThisWeek({ showOdds, isGolden }) {
         </div>
       ) : (
       <div className="bg-slate-800 rounded-xl border border-slate-700 p-5">
-        <h2 className="font-semibold text-slate-200 mb-4">
-          🔒 {isEditing ? 'Update Your Lock' : 'Submit Your Lock'} — Week {selectedWeek}
-          {lockCountdown && <span className="ml-2 text-xs font-normal text-yellow-400">Locks in {lockCountdown}</span>}
-        </h2>
+        <h2 className="font-semibold text-slate-200 mb-4">🔒 {isEditing ? 'Update Your Lock' : 'Submit Your Lock'} — Week {selectedWeek}</h2>
 
         {formError && (
           <div className="mb-3 bg-red-500/10 border border-red-500/30 text-red-300 rounded-lg p-3 text-sm">
@@ -796,13 +883,23 @@ export default function ThisWeek({ showOdds, isGolden }) {
           <div className={`px-4 py-3 border-b flex items-center justify-between ${isGolden ? 'border-yellow-600/40' : 'border-slate-700'}`}>
             <h2 className="font-semibold text-slate-200">Week {selectedWeek} Locks</h2>
             <div className="flex items-center gap-2">
+              {!isLocked && lockTime && formatCountdown(lockTime, nowTs) && (
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${
+                  (lockTime - nowTs) < 30 * 60000
+                    ? 'bg-red-900/60 text-red-300 border-red-500/30'
+                    : (lockTime - nowTs) < 2 * 3600000
+                      ? 'bg-amber-900/60 text-amber-300 border-amber-500/30'
+                      : 'bg-slate-700/60 text-slate-400 border-slate-600/30'
+                }`}>
+                  ⏰ {formatCountdown(lockTime, nowTs)}
+                </span>
+              )}
               {parlayResult && (
                 <span className={`text-xs font-bold px-3 py-1 rounded-full border ${
                   parlayResult === 'W' ? 'bg-green-500/20 text-green-300 border-green-500/30'
                   : 'bg-red-500/20 text-red-300 border-red-500/30'
                 }`}>PARLAY {parlayResult}</span>
               )}
-              {loading && <span className="text-slate-500 text-xs">refreshing…</span>}
             </div>
           </div>
           <div className={`divide-y ${isGolden ? 'divide-yellow-700/30' : 'divide-slate-700/50'}`}>
@@ -819,6 +916,9 @@ export default function ThisWeek({ showOdds, isGolden }) {
                     )}
                   </div>
                   <div className={`text-sm font-medium ${isGolden ? 'text-yellow-100' : 'text-slate-100'}`}>{pick.lock}</div>
+                  {pick.submittedAt && (
+                    <div className="text-xs text-slate-500 mt-0.5">locked {formatSubmittedAt(pick.submittedAt)}</div>
+                  )}
                   <LivePickStrip pick={pick} weekNum={selectedWeek} isLocked={isLocked} />
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
@@ -865,7 +965,7 @@ export default function ThisWeek({ showOdds, isGolden }) {
         </div>
       )}
 
-      {picks.length === 0 && !loading && !serverError && (
+      {picks.length === 0 && !serverError && (
         <div className="text-center py-10 text-slate-500">
           No picks yet for Week {selectedWeek}. Be the first to lock in ☝️
         </div>

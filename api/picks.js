@@ -58,6 +58,11 @@ export default async function handler(req, res) {
     const { week, player, sport, game, lock, odds } = req.body
     if (!week || !player || !lock) return res.status(400).json({ error: 'week, player, lock required' })
     const playerName = player.trim().toUpperCase()
+
+    // Check if this is a new pick or an edit (to avoid duplicate "locked in" notifications)
+    const { data: existing } = await supabase.from('picks').select('player')
+      .eq('week', week).eq('player', playerName).maybeSingle()
+
     const { error } = await supabase.from('picks').upsert({
       week,
       player: playerName,
@@ -69,25 +74,19 @@ export default async function handler(req, res) {
     }, { onConflict: 'week,player' })
     if (error) return res.status(500).json({ error: error.message })
 
-    // Notify everyone that this player locked in
-    const oddsStr = odds ? ` (${Number(odds) > 0 ? '+' : ''}${odds})` : ''
-    const gameStr = game ? ` — ${game}` : ''
-    pushToAll(
-      `🔒 ${playerName} locked in!`,
-      `${lock}${oddsStr}${gameStr}`,
-      'pickAlerts'
-    )
+    // Only notify on new picks, not edits
+    if (!existing) {
+      const oddsStr = odds ? ` (${Number(odds) > 0 ? '+' : ''}${odds})` : ''
+      const gameStr = game ? ` — ${game}` : ''
+      await pushToAll(`🔒 ${playerName} locked in!`, `${lock}${oddsStr}${gameStr}`, 'pickAlerts')
 
-    // Check if all 6 players are now in — fire a separate "all locked in" push
-    const ALL_PLAYERS = ['BRITTON', 'CHRIS', 'COLBY', 'NATHAN', 'LUCAS', 'KADEN']
-    const { data: allPicks } = await supabase.from('picks').select('player').eq('week', week)
-    const submitted = new Set((allPicks || []).map(p => p.player.trim().toUpperCase()))
-    if (ALL_PLAYERS.every(p => submitted.has(p))) {
-      pushToAll(
-        '🔥 All locks are in!',
-        "Everyone's locked in for this week — check the parlay!",
-        'pickAlerts'
-      )
+      // Check if all 6 players are now in — fire a separate "all locked in" push
+      const ALL_PLAYERS = ['BRITTON', 'CHRIS', 'COLBY', 'NATHAN', 'LUCAS', 'KADEN']
+      const { data: allPicks } = await supabase.from('picks').select('player').eq('week', week)
+      const submitted = new Set((allPicks || []).map(p => p.player.trim().toUpperCase()))
+      if (ALL_PLAYERS.every(p => submitted.has(p))) {
+        await pushToAll('🔥 All locks are in!', "Everyone's locked in for this week — check the parlay!", 'pickAlerts')
+      }
     }
 
     return res.json({ ok: true })
@@ -112,7 +111,7 @@ export default async function handler(req, res) {
         const noLoss = !allPicks.some(p => p.result === 'L')
         const allDone = allPicks.every(p => p.result === 'W' || p.result === 'P')
         if (noLoss && allDone) {
-          pushToAll(
+          await pushToAll(
             '🏆 PARLAY HIT!',
             `All ${allPicks.length} picks cashed this week — WE EAT! 💰`,
             'parlay'

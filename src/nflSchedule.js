@@ -119,6 +119,7 @@ export const NFL_WEEKS = Array.from({ length: 18 }, (_, i) => i + 1)
 
 // Returns the current NFL week based on the season start date (Week 1 = Sept 10, 2026 Thursday)
 export const CURRENT_SEASON = 2026
+export const SEASON_START_UTC = '2026-09-10T00:00:00Z'
 
 export function getCurrentNflWeek() {
   const WEEK1_START = new Date('2026-09-10T00:00:00Z')

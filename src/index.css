@@ -19,6 +19,15 @@ body {
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.25s ease-out both;
+}
+
 /* ============================================================
    GOLDEN MODE — override every slate/gray surface with gold
    ============================================================ */

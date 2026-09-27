@@ -19,8 +19,6 @@
   ],
   "crons": [
     { "path": "/api/notify", "schedule": "0 19 * * 6" },
-    { "path": "/api/notify-sunday", "schedule": "0 16 * * 0" },
-    { "path": "/api/notify-sunday?kickoff=1", "schedule": "30 17 * * 0" },
-    { "path": "/api/notify-sunday?kickoff=1", "schedule": "30 23 * * 4" }
+    { "path": "/api/notify-sunday", "schedule": "0 16 * * 0" }
   ]
 }

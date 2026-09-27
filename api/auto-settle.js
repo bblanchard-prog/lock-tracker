@@ -212,12 +212,7 @@ function fetchWithTimeout(url, ms = 8000) {
 
 async function fetchEspnScoreboard(weekKey) {
   const weekNum = parseInt(weekKey.replace(/.*W/, ''), 10)
-  const WEEK1_START = new Date('2026-09-10T00:00:00Z')
-  const weekStart = new Date(WEEK1_START.getTime() + (weekNum - 1) * 7 * 24 * 60 * 60 * 1000)
-  const weekEnd = new Date(weekStart.getTime() + 8 * 24 * 60 * 60 * 1000)
-  const fmt = d => d.toISOString().slice(0, 10).replace(/-/g, '')
-  const dates = `${fmt(weekStart)}-${fmt(weekEnd)}`
-  const res = await fetchWithTimeout(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=${dates}&limit=20`)
+  const res = await fetchWithTimeout(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&week=${weekNum}&year=${CURRENT_SEASON}&limit=20`)
   if (!res.ok) return []
   const data = await res.json()
   return data.events || []
@@ -228,8 +223,8 @@ function findGame(events, gameField) {
   const parts = gameField.toUpperCase().split(/\s+(?:VS\.?|@|AT)\s+/)
   if (parts.length < 2) return null
   const [teamA, teamB] = parts
-  const normA = TEAM_ALIASES[teamA] || teamA
-  const normB = TEAM_ALIASES[teamB] || teamB
+  const normA = (TEAM_ALIASES[teamA] || teamA).toUpperCase()
+  const normB = (TEAM_ALIASES[teamB] || teamB).toUpperCase()
 
   for (const event of events) {
     const comp = event.competitions?.[0]
@@ -259,7 +254,11 @@ export default async function handler(req, res) {
 
   const auth = req.headers.authorization || ''
   const secret = process.env.SETTLE_SECRET
-  if (secret && auth !== `Bearer ${secret}`) {
+  // Accept GitHub Actions bearer token OR admin password hash from the settings drawer
+  const ADMIN_HASH = 'b48cd264507888552dfc132357c1b5b96a158ec451830850343abecbf4ff6d04'
+  const isValidSecret = !secret || auth === `Bearer ${secret}`
+  const isValidAdmin = auth === `AdminHash ${ADMIN_HASH}`
+  if (!isValidSecret && !isValidAdmin) {
     return res.status(401).json({ error: 'unauthorized' })
   }
 

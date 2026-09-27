@@ -83,7 +83,16 @@ function applyOverridesToPick(pick, year, weekNum, overrides) {
   return overrides[key] ? { ...pick, ...overrides[key] } : pick
 }
 
-export default function Leaderboard({ allSeasons }) {
+function calcStreak(picks) {
+  let streak = 0
+  for (let i = picks.length - 1; i >= 0; i--) {
+    if (picks[i].result === 'W' || picks[i].result === 'P') streak++
+    else break
+  }
+  return streak
+}
+
+export default function Leaderboard({ allSeasons, isGolden }) {
   const years = allSeasons.map(s => s.year).sort((a, b) => b - a)
   const [selectedYear, setSelectedYear] = useState('all-time')
   const [shamePlayer, setShamePlayer] = useState(null)
@@ -177,14 +186,19 @@ export default function Leaderboard({ allSeasons }) {
   }
 
   const standings = Object.keys({ ...seasonWins, ...seasonLosses, ...seasonPushes })
-    .map(player => ({
-      player,
-      wins: seasonWins[player] || 0,
-      losses: seasonLosses[player] || 0,
-      pushes: seasonPushes[player] || 0,
-      points: seasonWins[player] || 0,
-      avgOdds: avgOddsAmerican(player),
-    }))
+    .map(player => {
+      const w = seasonWins[player] || 0
+      const l = seasonLosses[player] || 0
+      return {
+        player,
+        wins: w,
+        losses: l,
+        pushes: seasonPushes[player] || 0,
+        points: w,
+        avgOdds: avgOddsAmerican(player),
+        winPct: w + l > 0 ? Math.round(w / (w + l) * 100) : null,
+      }
+    })
     .sort((a, b) => b.points - a.points)
 
   // All parlay wins across all seasons, with full picks (overrides applied)
@@ -247,7 +261,7 @@ export default function Leaderboard({ allSeasons }) {
   const title = season ? `${season.year} Standings` : 'All-Time Standings'
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${isGolden ? 'golden' : ''}`}>
       {/* Season selector */}
       <div className="flex items-center gap-3">
         <span className="text-slate-400 text-sm font-medium">View:</span>
@@ -404,6 +418,7 @@ export default function Leaderboard({ allSeasons }) {
               <th className="text-right px-4 py-2">W</th>
               <th className="text-right px-4 py-2">L</th>
               {season && <th className="text-right px-4 py-2">P</th>}
+              <th className="text-right px-4 py-2 hidden sm:table-cell">Win%</th>
               <th className="text-right px-4 py-2">Points</th>
               <th className="text-right px-4 py-2 hidden sm:table-cell">Avg Line</th>
               <th className="text-right px-4 py-2">🐭</th>
@@ -417,17 +432,29 @@ export default function Leaderboard({ allSeasons }) {
               >
                 <td className="px-4 py-3 text-slate-400">{idx + 1}</td>
                 <td className="px-4 py-3">
-                  <button
-                    onClick={() => setProfilePlayer(player.player)}
-                    className="font-semibold hover:underline transition-colors"
-                    style={{ color: getColor(player.player) }}
-                  >
-                    {player.player}
-                  </button>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      onClick={() => setProfilePlayer(player.player)}
+                      className="font-semibold hover:underline transition-colors"
+                      style={{ color: getColor(player.player) }}
+                    >
+                      {player.player}
+                    </button>
+                    {(() => {
+                      const ph = playerHistory[player.player] || []
+                      const streak = calcStreak(ph)
+                      return streak >= 3 ? (
+                        <span className="text-xs bg-green-900/60 text-green-300 px-1.5 py-0.5 rounded font-bold">🔥{streak}W</span>
+                      ) : null
+                    })()}
+                  </div>
                 </td>
                 <td className="px-4 py-3 text-right text-green-400">{player.wins}</td>
                 <td className="px-4 py-3 text-right text-red-400">{player.losses}</td>
                 {season && <td className="px-4 py-3 text-right text-slate-400">{player.pushes || 0}</td>}
+                <td className="px-4 py-3 text-right font-mono text-xs text-slate-400 hidden sm:table-cell">
+                  {player.winPct !== null ? `${player.winPct}%` : '—'}
+                </td>
                 <td className="px-4 py-3 text-right font-bold text-yellow-400">{player.points}</td>
                 <td className="px-4 py-3 text-right font-mono text-xs text-slate-400 hidden sm:table-cell">
                   {player.avgOdds !== null
