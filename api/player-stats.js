@@ -34,7 +34,7 @@ function getTeamFromPlayerProp(lock) {
   return null
 }
 
-const cache = {}
+const postCache = {}  // only final/post-game results — never stale
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -44,10 +44,12 @@ export default async function handler(req, res) {
   if (!year || !week || !lock) return res.status(200).json(null)
 
   const cacheKey = `${year}-${week}-${lock}-${game || ''}`
-  if (cache[cacheKey] !== undefined) return res.status(200).json(cache[cacheKey])
+
+  // Only serve from cache when the game is over — live results always fetch fresh
+  if (postCache[cacheKey] !== undefined) return res.status(200).json(postCache[cacheKey])
   const fileCached = readFileCache(cacheKey)
   if (fileCached !== undefined) {
-    cache[cacheKey] = fileCached
+    postCache[cacheKey] = fileCached
     return res.status(200).json(fileCached)
   }
 
@@ -182,9 +184,9 @@ export default async function handler(req, res) {
     }
 
     const result = { playerName, actual, label: intent.label, ou: intent.ou, line: intent.line, gameShortName, homeScore, awayScore, homeAbbr, awayAbbr, gameStatus: statusState, period, clock }
-    if (result.playerName !== null) {
-      cache[cacheKey] = result
-      if (statusState === 'post') writeFileCache(cacheKey, result)
+    if (result.playerName !== null && statusState === 'post') {
+      postCache[cacheKey] = result
+      writeFileCache(cacheKey, result)
     }
     // Don't cache at the CDN edge when playerName is unresolved — forces fresh fetch next time
     const maxAge = result.playerName === null ? 0 : statusState === 'post' ? 86400 : 60
