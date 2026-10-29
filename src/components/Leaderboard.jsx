@@ -254,6 +254,29 @@ export default function Leaderboard({ allSeasons, isGolden }) {
     return { player: tied.length === 1 ? sorted[0][0] : null, wins: topWins, tied: tied.map(([p]) => p) }
   })()
 
+  // All-time win % leader — minimum 20 settled picks to qualify
+  const allTimeWinPct = (() => {
+    const MIN_PICKS = 20
+    const entries = Object.entries(lifetimeWins)
+      .map(([player, wins]) => {
+        const losses = lifetimeLosses[player] || 0
+        const total = wins + losses
+        return { player, wins, losses, total, pct: total >= MIN_PICKS ? wins / total : null }
+      })
+      .filter(e => e.pct !== null)
+      .sort((a, b) => b.pct - a.pct)
+    if (!entries.length) return null
+    const top = entries[0]
+    const tied = entries.filter(e => e.pct === top.pct)
+    return {
+      player: tied.length === 1 ? top.player : null,
+      pctDisplay: Math.round(top.pct * 100),
+      wins: top.wins,
+      total: top.total,
+      tied: tied.map(e => e.player),
+    }
+  })()
+
   const progressResult = season ? buildProgressData(season) : null
   const progressData = progressResult?.data ?? null
   const progressPlayers = progressResult?.players ?? []
@@ -300,32 +323,56 @@ export default function Leaderboard({ allSeasons, isGolden }) {
             <h2 className="font-bold text-yellow-300 tracking-wide">Hall of Champions</h2>
           </div>
 
-          {/* All-time banner */}
-          {allTimeChamp && (
-            <div className="px-4 py-4 border-b border-slate-700 bg-yellow-500/5">
-              <div className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">All-Time Leader</div>
-              <div className="flex items-center gap-3">
-                <span className="text-4xl">🐐</span>
-                <div>
-                  {allTimeChamp.player ? (
-                    <div className="text-2xl font-black" style={{ color: getColor(allTimeChamp.player) }}>
-                      {allTimeChamp.player}
-                    </div>
-                  ) : (
-                    <div className="text-2xl font-black text-slate-300">
-                      {allTimeChamp.tied.join(' & ')}
-                    </div>
-                  )}
-                  <div className="text-yellow-400 font-bold text-sm">{allTimeChamp.wins} all-time wins</div>
+          {/* All-time banner — most wins + best win % */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-slate-700 border-b border-slate-700 bg-yellow-500/5">
+            {allTimeChamp && (
+              <div className="px-4 py-4">
+                <div className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Most Wins</div>
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">🐐</span>
+                  <div>
+                    {allTimeChamp.player ? (
+                      <div className="text-xl font-black" style={{ color: getColor(allTimeChamp.player) }}>
+                        {allTimeChamp.player}
+                      </div>
+                    ) : (
+                      <div className="text-xl font-black text-slate-300">
+                        {allTimeChamp.tied.join(' & ')}
+                      </div>
+                    )}
+                    <div className="text-yellow-400 font-bold text-sm">{allTimeChamp.wins} all-time wins</div>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+            {allTimeWinPct && (
+              <div className="px-4 py-4">
+                <div className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Best Win %</div>
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">🎯</span>
+                  <div>
+                    {allTimeWinPct.player ? (
+                      <div className="text-xl font-black" style={{ color: getColor(allTimeWinPct.player) }}>
+                        {allTimeWinPct.player}
+                      </div>
+                    ) : (
+                      <div className="text-xl font-black text-slate-300">
+                        {allTimeWinPct.tied.join(' & ')}
+                      </div>
+                    )}
+                    <div className="text-yellow-400 font-bold text-sm">
+                      {allTimeWinPct.pctDisplay}% · {allTimeWinPct.wins}W–{allTimeWinPct.total - allTimeWinPct.wins}L
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
-          {/* Per-season champions grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 divide-x divide-slate-700">
+          {/* Per-season champions grid — gap-as-border for even spacing across all breakpoints */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-px bg-slate-700/50">
             {seasonChampions.map(({ year, player, wins, tied }) => (
-              <div key={year} className="px-4 py-4 text-center">
+              <div key={year} className="bg-slate-800 px-3 py-4 text-center">
                 <div className="text-slate-400 text-xs font-semibold mb-2">{year}</div>
                 {player ? (
                   <>
@@ -727,7 +774,7 @@ export default function Leaderboard({ allSeasons, isGolden }) {
               <div className="overflow-y-auto flex-1">
                 {sortedYears.map(year => (
                   <div key={year}>
-                    <div className="px-5 py-2 bg-slate-700/40 border-b border-t border-slate-700 text-yellow-400 font-bold text-sm sticky top-0">
+                    <div className="px-5 py-2 bg-slate-800 border-b border-t border-slate-700 text-yellow-400 font-bold text-sm sticky top-0 z-10">
                       {year}
                     </div>
                     <table className="w-full text-sm">
