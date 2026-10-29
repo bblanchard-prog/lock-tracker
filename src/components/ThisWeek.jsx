@@ -401,16 +401,14 @@ export default function ThisWeek({ showOdds, isGolden }) {
   const weekKey = `${CURRENT_SEASON}-NFL-W${String(selectedWeek).padStart(2, '0')}`
   const staticGames = getGamesForWeek(selectedWeek)
 
-  // Parlay lock: all picks lock when the earliest game in the submitted slip kicks off
-  // Exclude TNF/Saturday — only Sunday/MNF games are in scope
+  // Parlay lock: locks when the earliest game that someone actually picked has kicked off.
+  // Never lock based on games nobody selected — an early game with no picks shouldn't block submissions.
   const sundayGames = scheduleGames?.filter(g => g.slot !== 'TNF' && g.slot !== 'Saturday')
   const pickedGameLabels = new Set(picks.map(p => normalizeGameString(p.game)).filter(Boolean))
   const slipGames = sundayGames?.filter(g => pickedGameLabels.has(normalizeGameString(g.label)))
   const lockTime = slipGames?.length
     ? Math.min(...slipGames.map(g => g.ts).filter(Boolean))
-    : sundayGames?.length
-      ? Math.min(...sundayGames.map(g => g.ts).filter(Boolean))
-      : null
+    : null
   const isLocked = lockTime ? nowTs >= lockTime : false
 
   const submittedPlayers = new Set(picks.map(p => p.player.trim().toUpperCase()))
