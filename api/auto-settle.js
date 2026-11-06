@@ -27,6 +27,9 @@ const TEAM_ALIASES = {
   MIN:'Minnesota Vikings',NE:'New England Patriots',NO:'New Orleans Saints',NYG:'New York Giants',
   NYJ:'New York Jets',PHI:'Philadelphia Eagles',PIT:'Pittsburgh Steelers',SEA:'Seattle Seahawks',
   SF:'San Francisco 49ers',TB:'Tampa Bay Buccaneers',TEN:'Tennessee Titans',WAS:'Washington Commanders',
+  // ESPN abbreviations that differ from standard short codes
+  GNB:'Green Bay Packers',KAN:'Kansas City Chiefs',NOR:'New Orleans Saints',
+  SFO:'San Francisco 49ers',TAM:'Tampa Bay Buccaneers',NWE:'New England Patriots',LVR:'Las Vegas Raiders',
   BEARS:'Chicago Bears',CHIEFS:'Kansas City Chiefs',BILLS:'Buffalo Bills',RAVENS:'Baltimore Ravens',
   EAGLES:'Philadelphia Eagles',COWBOYS:'Dallas Cowboys',PACKERS:'Green Bay Packers',LIONS:'Detroit Lions',
   VIKINGS:'Minnesota Vikings',SAINTS:'New Orleans Saints',FALCONS:'Atlanta Falcons',BUCS:'Tampa Bay Buccaneers',

@@ -2,12 +2,6 @@ import webpush from 'web-push'
 import { supabase } from './_supabase.js'
 import { CURRENT_SEASON, SEASON_OPENERS } from './_constants.js'
 
-webpush.setVapidDetails(
-  process.env.VAPID_EMAIL,
-  process.env.VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY
-)
-
 const ALL_PLAYERS = ['BRITTON', 'CHRIS', 'COLBY', 'NATHAN', 'LUCAS', 'KADEN']
 
 // Cron schedule (vercel.json):
@@ -15,6 +9,14 @@ const ALL_PLAYERS = ['BRITTON', 'CHRIS', 'COLBY', 'NATHAN', 'LUCAS', 'KADEN']
 //   0 16 * * 0  — Sunday 11am CDT: "locks in 1 hour" (?kickoff unset)
 //   0 18 * * 0  — Sunday 1pm ET kickoff: "LOCKS ARE LIVE!" (?kickoff=live)
 export default async function handler(req, res) {
+  if (!process.env.VAPID_EMAIL || !process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+    return res.status(500).json({ error: 'VAPID env vars not set — add them to Vercel dashboard' })
+  }
+  webpush.setVapidDetails(
+    process.env.VAPID_EMAIL,
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY,
+  )
   const now = new Date()
   const kickoff = req.query?.kickoff
   const WEEK1_START = new Date(`${SEASON_OPENERS[CURRENT_SEASON]}T00:00:00Z`)

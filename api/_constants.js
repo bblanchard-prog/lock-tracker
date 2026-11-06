@@ -69,7 +69,7 @@ export function parsePropIntent(lock) {
   else if (/^CATCH|^CATCHES/.test(statKey)) { category = 'receiving'; label = 'REC' }
   else if (/^REC/.test(statKey) && !/YDS|YARD/.test(statKey)) { category = 'receiving'; label = 'REC' }
   else if (/REC.*YDS|REC.*YARD|RECEIVING.*YDS/.test(statKey)) { category = 'receiving'; label = 'YDS' }
-  else if (/RUSH.*YDS|RUSH.*YARD/.test(statKey)) { category = 'rushing'; label = 'YDS' }
+  else if (/RUSH.*YDS|RUSH.*YARD|CARR?(?:Y(?:ING)?|IES)?.*(?:YDS|YARD)/.test(statKey)) { category = 'rushing'; label = 'YDS' }
   else if (/^YDS|^YARD/.test(statKey)) { category = 'receiving'; label = 'YDS' }
   else if (/PASS.*TD|TD.*PASS/.test(statKey)) { category = 'passing'; label = 'TD' }
   else if (/^TOUCHDOWN/.test(statKey)) { category = 'receiving'; label = 'TD' }
@@ -91,7 +91,7 @@ export function normalizeLock(raw) {
   s = s.replace(/\bO(\d)/g, 'o$1').replace(/\bU(\d)/g, 'u$1')
   const STAT_MAP = [
     [/\b(receiving yards|rec yards|rec yds)\b/gi, 'Rec Yds'],
-    [/\b(rush(?:ing)? yards?|rush(?:ing)? yds)\b/gi, 'Rush Yds'],
+    [/\b(rush(?:ing)? yards?|rush(?:ing)? yds|carr(?:y(?:ing)?|ies) yards?)\b/gi, 'Rush Yds'],
     [/\b(rush(?:ing)? att(?:empts?)?)\b/gi, 'Car'],
     [/\b(pass(?:ing)? yards?|pass yds)\b/gi, 'Pass Yds'],
     [/\b(pass(?:ing)? att(?:empts?)?|pass att)\b/gi, 'Pass Att'],

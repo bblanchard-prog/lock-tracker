@@ -1,13 +1,17 @@
 import webpush from 'web-push'
 import { supabase } from './_supabase.js'
 
-webpush.setVapidDetails(
-  process.env.VAPID_EMAIL,
-  process.env.VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY
-)
+let vapidReady = false
+function ensureVapid() {
+  if (vapidReady) return true
+  if (!process.env.VAPID_EMAIL || !process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return false
+  webpush.setVapidDetails(process.env.VAPID_EMAIL, process.env.VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY)
+  vapidReady = true
+  return true
+}
 
 async function pushToAll(title, body, prefKey = null) {
+  if (!ensureVapid()) return
   const { data: subs } = await supabase.from('push_subscriptions').select('*')
   if (!subs?.length) return
   const targets = prefKey
@@ -103,22 +107,6 @@ export default async function handler(req, res) {
       .eq('week', week)
       .eq('player', player.trim().toUpperCase())
     if (error) return res.status(500).json({ error: error.message })
-
-    // Fire parlay-hit notification if all picks just settled as W/P
-    if (result === 'W' || result === 'P') {
-      const { data: allPicks } = await supabase.from('picks').select('result,lock').eq('week', week)
-      if (allPicks && allPicks.length >= 4) {
-        const noLoss = !allPicks.some(p => p.result === 'L')
-        const allDone = allPicks.every(p => p.result === 'W' || p.result === 'P')
-        if (noLoss && allDone) {
-          await pushToAll(
-            '🏆 PARLAY HIT!',
-            `All ${allPicks.length} picks cashed this week — WE EAT! 💰`,
-            'parlay'
-          )
-        }
-      }
-    }
 
     return res.json({ ok: true })
   }

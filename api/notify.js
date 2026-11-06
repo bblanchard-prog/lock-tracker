@@ -2,16 +2,18 @@ import webpush from 'web-push'
 import { supabase } from './_supabase.js'
 import { CURRENT_SEASON, SEASON_OPENERS } from './_constants.js'
 
-webpush.setVapidDetails(
-  process.env.VAPID_EMAIL,
-  process.env.VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY
-)
-
 const ALL_PLAYERS = ['BRITTON', 'CHRIS', 'COLBY', 'NATHAN', 'LUCAS', 'KADEN']
 
 // Called by Vercel Cron every Saturday at 2pm CDT (19:00 UTC)
 export default async function handler(req, res) {
+  if (!process.env.VAPID_EMAIL || !process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+    return res.status(500).json({ error: 'VAPID env vars not set — add them to Vercel dashboard' })
+  }
+  webpush.setVapidDetails(
+    process.env.VAPID_EMAIL,
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY,
+  )
   const opener = SEASON_OPENERS[CURRENT_SEASON]
   const WEEK1_START = new Date(`${opener}T00:00:00Z`)
   const daysSince = (Date.now() - WEEK1_START.getTime()) / (1000 * 60 * 60 * 24)

@@ -23,7 +23,7 @@ function normalizeLockText(raw) {
   s = s.replace(/\bO(\d)/g, 'o$1').replace(/\bU(\d)/g, 'u$1')
   const STAT_MAP = [
     [/\b(receiving yards|rec yards|rec yds)\b/gi, 'Rec Yds'],
-    [/\b(rush(?:ing)? yards?|rush(?:ing)? yds)\b/gi, 'Rush Yds'],
+    [/\b(rush(?:ing)? yards?|rush(?:ing)? yds|carr(?:y(?:ing)?|ies) yards?)\b/gi, 'Rush Yds'],
     [/\b(rush(?:ing)? att(?:empts?)?)\b/gi, 'Car'],
     [/\b(pass(?:ing)? yards?|pass yds)\b/gi, 'Pass Yds'],
     [/\b(pass(?:ing)? att(?:empts?)?|pass att)\b/gi, 'Pass Att'],
@@ -51,7 +51,7 @@ function normalizeLockText(raw) {
 }
 function normalizeGameString(raw) {
   if (!raw) return raw
-  const sep = raw.includes('@') ? '@' : 'vs'
+  const sep = raw.includes('@') ? '@' : /\s*vs\s*/i
   const parts = raw.split(sep).map(s => s.trim().toUpperCase())
   if (parts.length !== 2 || !parts[0] || !parts[1]) return raw.trim().toUpperCase()
   return `${parts[0]} vs ${parts[1]}`
